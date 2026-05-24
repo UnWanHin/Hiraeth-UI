@@ -1,0 +1,6 @@
+services:
+  portal:
+    environment:
+      DOCKER_SOCKET: /var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock

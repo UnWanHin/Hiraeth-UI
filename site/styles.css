@@ -1899,3 +1899,58 @@ h2,
     min-width: 0;
   }
 }
+
+/* service health actions */
+.section-head.compact.action-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.inline-action {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--green);
+  background: rgba(47, 255, 142, 0.06);
+  cursor: pointer;
+  font-family: var(--pixel-font);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.inline-action:hover,
+.inline-action:focus-visible {
+  border-color: var(--line-strong);
+  background: rgba(47, 255, 142, 0.12);
+  outline: none;
+}
+
+.inline-action:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.monitor-service-row {
+  grid-template-columns: 86px minmax(140px, 0.7fr) minmax(0, 1fr) auto;
+}
+
+.monitor-service-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.watchdog-state {
+  color: var(--muted);
+  font-family: var(--pixel-font);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .section-head.compact.action-head { align-items: flex-start; }
+  .monitor-service-row { grid-template-columns: 1fr; }
+  .monitor-service-actions { justify-content: flex-start; }
+}

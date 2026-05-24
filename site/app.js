@@ -561,6 +561,41 @@ Object.assign(messages.en.routeLabels, {
   localTcpWith: "local tcp {latency}",
 });
 
+Object.assign(messages["zh-Hant"].health, {
+  checkNow: "檢查",
+  checkingNow: "檢查中",
+  restart: "重啟",
+  restarting: "重啟中",
+  restartUnavailable: "不可重啟",
+  watchdogOn: "自動保活",
+  watchdogOff: "手動",
+  restartOk: "重啟已送出",
+  restartFailed: "重啟失敗",
+});
+Object.assign(messages["zh-Hans"].health, {
+  checkNow: "检查",
+  checkingNow: "检查中",
+  restart: "重启",
+  restarting: "重启中",
+  restartUnavailable: "不可重启",
+  watchdogOn: "自动保活",
+  watchdogOff: "手动",
+  restartOk: "重启已送出",
+  restartFailed: "重启失败",
+});
+Object.assign(messages.en.health, {
+  checkNow: "Check",
+  checkingNow: "Checking",
+  restart: "Restart",
+  restarting: "Restarting",
+  restartUnavailable: "No restart",
+  watchdogOn: "watchdog",
+  watchdogOff: "manual",
+  restartOk: "restart sent",
+  restartFailed: "restart failed",
+});
+
+
 function supportedLanguage(language) {
   return supportedLanguages.includes(language) ? language : "zh-Hant";
 }
@@ -619,6 +654,7 @@ const state = {
   query: "",
   statuses: new Map(),
   publicRoutes: new Map(),
+  statusRefreshing: false,
   launcherOpen: false,
   lastFocus: null,
   route: "home",
@@ -653,6 +689,7 @@ const elements = {
   hubLinks: $("#hub-links"),
   clockZone: $("#clock-zone"),
   languageButtons: $$("[data-lang-option]"),
+  statusButtons: $$("[data-refresh-status]"),
 };
 
 const monitorElements = {
@@ -849,6 +886,27 @@ function routeKindText(kind) {
 
 function actionText(action) {
   return tx("status." + action, action);
+}
+
+function setStatusRefreshing(active) {
+  state.statusRefreshing = active;
+  elements.statusButtons.forEach((button) => {
+    button.disabled = active;
+    button.textContent = active ? t("health.checkingNow") : t("health.checkNow");
+  });
+}
+
+function restartButton(service) {
+  if (!service.canRestart) return htmlTag("span", "class=\"watchdog-state\"", escapeHtml(t("health.restartUnavailable")));
+  const label = service.restarting ? t("health.restarting") : (service.restartLabel || t("health.restart"));
+  return "<button class=\"inline-action restart-action\" type=\"button\" data-restart-service=\"" + escapeHtml(service.id) + "\"" + (service.restarting ? " disabled" : "") + ">" + escapeHtml(label) + "</button>";
+}
+
+function restartMeta(service) {
+  const parts = [service.watchdogEnabled ? t("health.watchdogOn") : t("health.watchdogOff")];
+  if (service.failures) parts.push("fail " + service.failures);
+  if (service.lastRestartMessage) parts.push(service.lastRestartMessage);
+  return parts.join(" · ");
 }
 
 function setLanguage(language) {
@@ -1167,7 +1225,7 @@ function renderPorts(payload) {
         htmlTag("span", "class=\"port\"", escapeHtml(status.port)) +
         htmlTag("span", "", htmlTag("strong", "", escapeHtml(displayService ? displayService.name : portNames[status.port] || status.name)) + htmlTag("small", "", escapeHtml(latencyText))) +
         htmlTag("span", "class=\"signal " + stateLabel + "\"", escapeHtml(statusText(stateLabel))) +
-        htmlTag("span", "class=\"port-action\"", escapeHtml(actionText(action)))
+        htmlTag("span", "class=\"port-action\"", escapeHtml(status.canRestart ? (status.watchdogEnabled ? t("health.watchdogOn") : t("health.restart")) : actionText(action)))
       );
     })
     .join("");
@@ -1280,7 +1338,8 @@ function openItem(item) {
   else window.open(item.href, "_blank", "noopener,noreferrer");
 }
 
-async function refreshStatus() {
+async function refreshStatus(options = {}) {
+  if (options.manual) setStatusRefreshing(true);
   try {
     const response = await fetch("/api/status", { cache: "no-store" });
     const payload = await response.json();
@@ -1295,6 +1354,29 @@ async function refreshStatus() {
     if (elements.statusTitle) elements.statusTitle.textContent = t("health.statusUnavailable");
     if (elements.statusTime) elements.statusTime.textContent = t("health.retrying");
     if (elements.servicesMeta) elements.servicesMeta.textContent = t("health.syncUnavailable");
+  } finally {
+    if (options.manual) setStatusRefreshing(false);
+  }
+}
+
+async function restartService(id) {
+  const current = state.statuses.get(id);
+  if (current) {
+    state.statuses.set(id, { ...current, restarting: true });
+    renderServices();
+    renderDetail();
+  }
+  try {
+    const response = await fetch("/api/restart", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    const payload = await response.json();
+    if (Array.isArray(payload.services)) state.statuses = new Map(payload.services.map((service) => [service.id, service]));
+    await refreshHealth();
+  } catch {
+    await refreshHealth();
   }
 }
 
@@ -1367,10 +1449,12 @@ function renderMonitor(payload) {
       const publicText = publicRoute ? " \u00B7 " + publicRouteLabel(publicRoute) : "";
       const configured = services.find((item) => item.id === service.id);
       const displayName = configured ? localizedService(configured).name : service.name;
+      const metaText = service.canRestart ? " \u00B7 " + restartMeta(service) : "";
       return htmlTag("div", "class=\"monitor-service-row\"",
         htmlTag("span", "class=\"signal " + label + "\"", escapeHtml(statusText(label))) +
         htmlTag("strong", "", escapeHtml(displayName)) +
-        htmlTag("small", "", escapeHtml(service.port + " \u00B7 " + tx("routeLabels.localTcpWith", "local tcp {latency}", { latency }) + publicText))
+        htmlTag("small", "", escapeHtml(service.port + " \u00B7 " + tx("routeLabels.localTcpWith", "local tcp {latency}", { latency }) + publicText + metaText)) +
+        htmlTag("span", "class=\"monitor-service-actions\"", restartButton(service))
       );
     })
     .join("");
@@ -1545,6 +1629,15 @@ async function refreshMonitor() {
     if (state.launcherOpen) renderLauncher();
   } catch {
     if (monitorElements.updated) monitorElements.updated.textContent = t("monitor.unavailable");
+  }
+}
+
+async function refreshHealth(options = {}) {
+  if (options.manual) setStatusRefreshing(true);
+  try {
+    await Promise.all([refreshStatus(), refreshMonitor()]);
+  } finally {
+    if (options.manual) setStatusRefreshing(false);
   }
 }
 
@@ -1993,6 +2086,16 @@ if (elements.grid) {
 }
 
 elements.languageButtons.forEach((button) => button.addEventListener("click", () => setLanguage(button.dataset.langOption)));
+elements.statusButtons.forEach((button) => button.addEventListener("click", () => refreshHealth({ manual: true })));
+if (monitorElements.services) {
+  monitorElements.services.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-restart-service]");
+    if (!button) return;
+    button.disabled = true;
+    button.textContent = t("health.restarting");
+    restartService(button.dataset.restartService);
+  });
+}
 elements.launcherButtons.forEach((button) => button.addEventListener("click", openLauncher));
 elements.launcherClose.addEventListener("click", closeLauncher);
 elements.launcher.addEventListener("click", (event) => {

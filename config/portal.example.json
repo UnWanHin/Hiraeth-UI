@@ -92,7 +92,14 @@
       "id": "portal",
       "name": "Hiraeth",
       "host": "127.0.0.1",
-      "port": 8790
+      "port": 8790,
+      "restart": {
+        "enabled": false,
+        "type": "docker",
+        "container": "hiraeth-ui",
+        "label": "Restart",
+        "watchdog": false
+      }
     },
     {
       "id": "monitor",
@@ -152,5 +159,11 @@
       "description": "Runtime configuration",
       "href": "https://docs.docker.com/compose/"
     }
-  ]
+  ],
+  "watchdog": {
+    "enabled": false,
+    "intervalSeconds": 30,
+    "failureThreshold": 3,
+    "cooldownSeconds": 180
+  }
 }

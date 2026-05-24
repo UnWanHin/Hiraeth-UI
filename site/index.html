@@ -186,7 +186,7 @@
               </div>
             </section>
             <section class="monitor-panel" aria-labelledby="monitor-services-title">
-              <div class="section-head compact"><p class="eyebrow" data-i18n="monitor.serviceHealth">service health</p><h2 id="monitor-services-title">Ports</h2></div>
+              <div class="section-head compact action-head"><div><p class="eyebrow" data-i18n="monitor.serviceHealth">service health</p><h2 id="monitor-services-title">Ports</h2></div><button class="inline-action" id="monitor-check-now" type="button" data-refresh-status data-i18n="health.checkNow">Check</button></div>
               <div class="monitor-service-list" id="monitor-service-list"></div>
             </section>
           </div>
@@ -292,6 +292,7 @@
               <h1 id="ports-title">Ports</h1>
               <p class="lead" data-i18n="ports.lead">A focused list of local listeners that the portal currently tracks.</p>
             </div>
+            <button class="button secondary compact" id="ports-check-now" type="button" data-refresh-status data-i18n="health.checkNow">Check</button>
           </div>
           <div class="ports-layout">
             <div class="port-list" id="port-list"></div>

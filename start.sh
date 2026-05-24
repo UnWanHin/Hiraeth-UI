@@ -58,7 +58,7 @@ load_env() {
   local line key value
   while IFS= read -r line || [[ -n "$line" ]]; do
     case "$line" in
-      HIRAETH_HOST=*|HIRAETH_PORT=*|HIRAETH_CONTAINER_NAME=*|HIRAETH_MIGRATE_LEGACY=*)
+      HIRAETH_HOST=*|HIRAETH_PORT=*|HIRAETH_CONTAINER_NAME=*|HIRAETH_MIGRATE_LEGACY=*|HIRAETH_ENABLE_DOCKER_WATCHDOG=*)
         key="${line%%=*}"
         value="${line#*=}"
         value="${value%\"}"
@@ -143,7 +143,12 @@ prepare_legacy_container_migration() {
 }
 run_compose() {
   detect_compose || fail "Docker Compose is required. Install Docker Engine with the compose plugin first."
-  (cd "$ROOT_DIR" && "${COMPOSE_CMD[@]}" "$@")
+  local compose_args=()
+  if [[ "${HIRAETH_ENABLE_DOCKER_WATCHDOG:-false}" == "true" ]]; then
+    info "Docker watchdog enabled; mounting /var/run/docker.sock"
+    compose_args=(-f docker-compose.yml -f docker-compose.watchdog.yml)
+  fi
+  (cd "$ROOT_DIR" && "${COMPOSE_CMD[@]}" "${compose_args[@]}" "$@")
 }
 
 start_app() {

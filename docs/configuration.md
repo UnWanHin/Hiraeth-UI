@@ -121,3 +121,46 @@ Enable scheduled refresh:
 ```
 
 Benchmark output is written to ignored local files under `data/`.
+
+## Watchdog And Restart
+
+Hiraeth can show restart buttons and run an optional watchdog for configured Docker containers. This is disabled by default because access to the Docker socket is powerful.
+
+Enable the Docker socket override in local environment only:
+
+```dotenv
+HIRAETH_ENABLE_DOCKER_WATCHDOG=true
+```
+
+Then opt in per health check from `config/portal.local.json`:
+
+```json
+{
+  "id": "api",
+  "name": "API Manager",
+  "host": "127.0.0.1",
+  "port": 4000,
+  "restart": {
+    "enabled": true,
+    "type": "docker",
+    "container": "api-container-name",
+    "label": "Restart",
+    "watchdog": true
+  }
+}
+```
+
+Global watchdog timing is controlled by:
+
+```json
+{
+  "watchdog": {
+    "enabled": true,
+    "intervalSeconds": 30,
+    "failureThreshold": 3,
+    "cooldownSeconds": 180
+  }
+}
+```
+
+The restart API only accepts configured service IDs and never accepts arbitrary shell commands. Host processes should stay monitor-only until a separate allowlisted backend, such as systemd unit control, is designed.

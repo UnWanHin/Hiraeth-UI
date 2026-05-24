@@ -1,4 +1,4 @@
-import { createServer } from "node:http";
+import { createServer, request as httpRequest } from "node:http";
 import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
@@ -12,6 +12,7 @@ const port = Number(process.env.PORT || 8790);
 const root = process.env.STATIC_ROOT || "/app/site";
 const benchmarkPath = process.env.BENCHMARK_DATA || "/app/data/benchmark.local.json";
 const benchmarkStatusPath = process.env.BENCHMARK_STATUS || "/app/data/benchmark-status.local.json";
+const dockerSocketPath = process.env.DOCKER_SOCKET || "/var/run/docker.sock";
 
 const defaultConfig = {
   brand: {
@@ -44,6 +45,7 @@ const defaultConfig = {
     { id: "monitor", name: "Server Monitor", host: "127.0.0.1", port: 8790 },
   ],
   portNames: { 8790: "Hiraeth" },
+  watchdog: { enabled: false, intervalSeconds: 30, failureThreshold: 3, cooldownSeconds: 180 },
   heroTerminal: [
     { code: "00", command: "mount route://portal.example.com", status: "OK" },
     { code: "01", command: "enable access gate", status: "READY" },
@@ -178,6 +180,46 @@ function cleanHost(value, fallback = "127.0.0.1") {
   return /^[a-zA-Z0-9_.:-]+$/.test(cleaned) ? cleaned : fallback;
 }
 
+function cleanBoolean(value, fallback = false) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function cleanInteger(value, fallback, min, max) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function cleanDockerContainer(value) {
+  const cleaned = cleanText(value, "", 128);
+  return /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$/.test(cleaned) ? cleaned : "";
+}
+
+function cleanRestartAction(value) {
+  const action = isRecord(value) ? value : {};
+  const type = cleanText(action.type, "", 16).toLowerCase();
+  if (type !== "docker") return null;
+  const container = cleanDockerContainer(action.container);
+  if (!container) return null;
+  return {
+    enabled: cleanBoolean(action.enabled, false),
+    type: "docker",
+    container,
+    label: cleanText(action.label, "Restart", 32),
+    watchdog: cleanBoolean(action.watchdog, false),
+  };
+}
+
+function cleanWatchdogConfig(value) {
+  const watchdog = isRecord(value) ? value : {};
+  return {
+    enabled: cleanBoolean(watchdog.enabled, defaultConfig.watchdog.enabled),
+    intervalSeconds: cleanInteger(watchdog.intervalSeconds, defaultConfig.watchdog.intervalSeconds, 10, 3600),
+    failureThreshold: cleanInteger(watchdog.failureThreshold, defaultConfig.watchdog.failureThreshold, 1, 20),
+    cooldownSeconds: cleanInteger(watchdog.cooldownSeconds, defaultConfig.watchdog.cooldownSeconds, 30, 86400),
+  };
+}
+
 function cleanBrand(value) {
   const brand = isRecord(value) ? value : {};
   const iconPath = cleanHref(brand.iconPath, defaultConfig.brand.iconPath);
@@ -232,6 +274,7 @@ function cleanHealthCheck(value, fallback) {
     name: cleanText(check.name, fallback.name, 80),
     host: cleanHost(check.host, fallback.host || "127.0.0.1"),
     port: portValue,
+    restart: cleanRestartAction(check.restart),
   };
 }
 
@@ -285,6 +328,7 @@ function normalizeConfig(input) {
     services,
     healthChecks,
     portNames,
+    watchdog: cleanWatchdogConfig(config.watchdog),
     heroTerminal,
     ticker,
     opsLinks,
@@ -482,6 +526,31 @@ async function readText(filePath) {
   return readFile(filePath, "utf8");
 }
 
+const restartRuntime = new Map();
+
+function runtimeFor(id) {
+  if (!restartRuntime.has(id)) {
+    restartRuntime.set(id, { failures: 0, restarting: false, lastRestartAt: null, lastRestartOk: null, lastRestartMessage: "", nextAutoRestartAt: null });
+  }
+  return restartRuntime.get(id);
+}
+
+function restartInfo(target) {
+  const state = runtimeFor(target.id);
+  const canRestart = Boolean(target.restart && target.restart.enabled);
+  return {
+    canRestart,
+    restartLabel: canRestart ? target.restart.label : "",
+    watchdogEnabled: canRestart && Boolean(target.restart.watchdog && portalConfig.watchdog.enabled),
+    failures: state.failures,
+    restarting: state.restarting,
+    lastRestartAt: state.lastRestartAt,
+    lastRestartOk: state.lastRestartOk,
+    lastRestartMessage: state.lastRestartMessage,
+    nextAutoRestartAt: state.nextAutoRestartAt,
+  };
+}
+
 function probe(target) {
   const started = Date.now();
 
@@ -510,8 +579,17 @@ function probe(target) {
   });
 }
 
+function decorateStatus(target, status) {
+  return {
+    ...status,
+    ...restartInfo(target),
+  };
+}
+
 async function serviceStatuses() {
-  return Promise.all(portalConfig.healthChecks.map(probe));
+  const checks = portalConfig.healthChecks;
+  const statuses = await Promise.all(checks.map(probe));
+  return statuses.map((status, index) => decorateStatus(checks[index], status));
 }
 
 async function statusResponse(res) {
@@ -523,6 +601,7 @@ async function statusResponse(res) {
 
   sendJson(res, {
     updatedAt: new Date().toISOString(),
+    watchdog: portalConfig.watchdog,
     summary: {
       online,
       total: services.length,
@@ -922,6 +1001,142 @@ function runtimeHtml(html, route = "home") {
   return output;
 }
 
+
+function readJsonBody(req, limit = 4096) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk;
+      if (body.length > limit) {
+        reject(new Error("request body too large"));
+        req.destroy();
+      }
+    });
+    req.on("end", () => {
+      if (!body) return resolve({});
+      try {
+        resolve(JSON.parse(body));
+      } catch {
+        reject(new Error("invalid json"));
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
+function dockerApi(method, path) {
+  return new Promise((resolve, reject) => {
+    const req = httpRequest({ socketPath: dockerSocketPath, method, path, timeout: 15000 }, (response) => {
+      let body = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk) => { body += chunk; });
+      response.on("end", () => resolve({ statusCode: response.statusCode || 0, body }));
+    });
+    req.on("timeout", () => req.destroy(new Error("Docker request timed out")));
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+function dockerErrorMessage(error) {
+  if (error && error.code === "ENOENT") return "Docker socket is not mounted";
+  if (error && error.code === "EACCES") return "Docker socket permission denied";
+  return cleanText(error?.message || "Docker restart failed", "Docker restart failed", 160);
+}
+
+async function restartDockerContainer(container) {
+  const response = await dockerApi("POST", "/containers/" + encodeURIComponent(container) + "/restart?t=10");
+  if ([204, 304].includes(response.statusCode)) return;
+  if (response.statusCode === 404) throw new Error("Docker container not found");
+  throw new Error("Docker returned HTTP " + response.statusCode);
+}
+
+function restartTarget(id) {
+  const cleaned = cleanId(id, "");
+  return portalConfig.healthChecks.find((target) => target.id === cleaned) || null;
+}
+
+async function performRestart(id, mode = "manual") {
+  const target = restartTarget(id);
+  if (!target) return { ok: false, status: 404, code: "RESTART_TARGET_NOT_FOUND", message: "Restart target not found" };
+  if (!target.restart || !target.restart.enabled) return { ok: false, status: 409, code: "RESTART_NOT_CONFIGURED", message: "Restart is not configured for this service" };
+
+  const runtime = runtimeFor(target.id);
+  if (runtime.restarting) return { ok: false, status: 409, code: "RESTART_IN_PROGRESS", message: "Restart already in progress" };
+
+  runtime.restarting = true;
+  runtime.lastRestartMessage = mode === "watchdog" ? "Watchdog restart running" : "Manual restart running";
+
+  try {
+    if (target.restart.type === "docker") await restartDockerContainer(target.restart.container);
+    runtime.failures = 0;
+    runtime.lastRestartAt = new Date().toISOString();
+    runtime.lastRestartOk = true;
+    runtime.lastRestartMessage = mode === "watchdog" ? "Watchdog restart sent" : "Manual restart sent";
+    runtime.nextAutoRestartAt = new Date(Date.now() + portalConfig.watchdog.cooldownSeconds * 1000).toISOString();
+    return { ok: true, status: 200, id: target.id, name: target.name, message: runtime.lastRestartMessage };
+  } catch (error) {
+    runtime.lastRestartAt = new Date().toISOString();
+    runtime.lastRestartOk = false;
+    runtime.lastRestartMessage = dockerErrorMessage(error);
+    runtime.nextAutoRestartAt = new Date(Date.now() + portalConfig.watchdog.cooldownSeconds * 1000).toISOString();
+    return { ok: false, status: 500, code: "RESTART_FAILED", id: target.id, name: target.name, message: runtime.lastRestartMessage };
+  } finally {
+    runtime.restarting = false;
+  }
+}
+
+async function restartResponse(req, res) {
+  if (req.method !== "POST") {
+    res.writeHead(405, { ...baseHeaders, "allow": "POST", "content-type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({ error: { code: "METHOD_NOT_ALLOWED", message: "Use POST" } }));
+    return;
+  }
+
+  let body;
+  try {
+    body = await readJsonBody(req);
+  } catch {
+    sendApiError(res, 400, "INVALID_JSON", "Invalid JSON body");
+    return;
+  }
+
+  const result = await performRestart(body.id, "manual");
+  const services = await serviceStatuses();
+  sendJson(res, { updatedAt: new Date().toISOString(), result, services }, result.status || 200);
+}
+
+async function watchdogTick() {
+  if (!portalConfig.watchdog.enabled) return;
+
+  const checks = portalConfig.healthChecks;
+  const statuses = await Promise.all(checks.map(probe));
+  for (let index = 0; index < checks.length; index += 1) {
+    const target = checks[index];
+    const status = statuses[index];
+    const runtime = runtimeFor(target.id);
+    runtime.failures = status.online ? 0 : runtime.failures + 1;
+
+    if (status.online || !target.restart || !target.restart.enabled || !target.restart.watchdog) continue;
+    if (runtime.failures < portalConfig.watchdog.failureThreshold) continue;
+    if (runtime.restarting) continue;
+    if (runtime.nextAutoRestartAt && Date.parse(runtime.nextAutoRestartAt) > Date.now()) continue;
+
+    performRestart(target.id, "watchdog").catch((error) => {
+      runtime.lastRestartAt = new Date().toISOString();
+      runtime.lastRestartOk = false;
+      runtime.lastRestartMessage = cleanText(error?.message, "Watchdog restart failed", 160);
+    });
+  }
+}
+
+function startWatchdog() {
+  if (!portalConfig.watchdog.enabled) return;
+  const intervalMs = portalConfig.watchdog.intervalSeconds * 1000;
+  setTimeout(() => watchdogTick().catch(() => {}), Math.min(5000, intervalMs));
+  setInterval(() => watchdogTick().catch(() => {}), intervalMs);
+}
+
 function sendJson(res, payload, status = 200) {
   res.writeHead(status, {
     ...baseHeaders,
@@ -983,6 +1198,11 @@ const server = createServer((req, res) => {
     return;
   }
 
+  if (req.url?.startsWith("/api/restart")) {
+    restartResponse(req, res).catch(() => sendApiError(res, 500, "RESTART_UNAVAILABLE", "Restart API unavailable"));
+    return;
+  }
+
   if (req.url?.startsWith("/api/benchmark")) {
     benchmarkResponse(res).catch(() => sendApiError(res, 500, "BENCHMARK_UNAVAILABLE", "Benchmark API unavailable"));
     return;
@@ -998,6 +1218,8 @@ const server = createServer((req, res) => {
     res.end("Portal unavailable");
   });
 });
+
+startWatchdog();
 
 server.listen(port, host, () => {
   console.log("hiraeth-ui listening on http://" + host + ":" + port);
