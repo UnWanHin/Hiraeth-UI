@@ -1,39 +1,99 @@
 # Hiraeth UI
 
-A lightweight, self-hosted Hiraeth route console for Docker services, local tools, server monitoring, and operator links.
+Hiraeth UI is a lightweight self-hosted route console for private tools, Docker services, local ports, server monitoring, and operator links. It is built as a source-code-first Node app and runs with Docker Compose using the official `node:22-alpine` image.
 
-The project is source-code first and Docker deployed. It currently uses the official `node:22-alpine` image through `docker-compose.yml`; no custom Docker image is required.
+The default deployment binds to `127.0.0.1:8790`, so it is intended to sit behind Cloudflare Tunnel, Nginx, Caddy, or another reverse proxy.
 
 ## Features
 
 - Path-based portal pages: `/`, `/services`, `/monitor`, `/ports`, `/ops`
-- Live server monitor API for CPU, memory, disk, uptime, and service health
-- Optional YABS benchmark import for network, disk, and Geekbench snapshots with scheduled refresh status
-- Browser-side Oracle region latency probe based on CloudPingTest endpoint style
-- Config-driven branding, services, links, health checks, ticker text, and terminal copy
-- Pixel-terminal UI with a black canvas and pointer trail
+- Config-driven service launcher, route categories, health checks, ticker text, and ops links
+- Live monitor API for CPU, memory, disk, uptime, process count, and TCP service health
+- Optional YABS benchmark import for network speed, disk IO, and Geekbench snapshots
+- Browser-side Oracle region latency probe
+- Pixel-terminal UI with black canvas styling and pointer trail effects
 - Security headers enabled by default
-- No secrets required in tracked source files
+- Open-source hygiene: local config, benchmark output, secrets, and personal assets are ignored
 
 ## Quick Start
 
 ```bash
-cp config/portal.example.json config/portal.local.json
-# Edit config/portal.local.json for your own domain, services, and health checks.
-docker compose up -d
+git clone https://github.com/UnWanHin/Hiraeth-UI.git
+cd Hiraeth-UI
+./start.sh
 ```
 
-The app binds to:
+Then open:
 
 ```text
 http://127.0.0.1:8790
 ```
 
-If you expose it through Cloudflare Tunnel or another reverse proxy, point the public hostname at:
+`./start.sh` creates `.env` and `config/portal.local.json` on first run, starts Docker Compose, and checks the local API.
+
+## One-Click Deploy Script
+
+```bash
+./start.sh              # initialize and start
+./start.sh status       # show container status and API health
+./start.sh logs         # follow container logs
+./start.sh restart      # recreate and restart
+./start.sh stop         # stop the stack
+./start.sh benchmark    # run YABS importer on the host
+```
+
+The script does not overwrite an existing `.env` or `config/portal.local.json`.
+
+## Manual Docker Deploy
+
+```bash
+cp .env.example .env
+cp config/portal.example.json config/portal.local.json
+docker compose up -d
+```
+
+Default bind:
+
+```text
+http://127.0.0.1:8790
+```
+
+Default Docker service:
+
+```text
+hiraeth-ui
+```
+
+Change port, host, or container name in `.env`:
+
+```dotenv
+HIRAETH_HOST=127.0.0.1
+HIRAETH_PORT=8790
+HIRAETH_CONTAINER_NAME=hiraeth-ui
+HIRAETH_MIGRATE_LEGACY=true
+```
+
+If you previously ran this portal under the old container name `studio-portal`, the start script removes that legacy container before creating `hiraeth-ui`. Set `HIRAETH_MIGRATE_LEGACY=false` in `.env` to disable that behavior.
+
+## Reverse Proxy
+
+For Cloudflare Tunnel, publish a hostname and point the service at:
 
 ```text
 http://localhost:8790
 ```
+
+For independent tools, prefer one hostname per service:
+
+```text
+portal.example.com  -> Hiraeth UI
+api.example.com     -> API manager
+hermes.example.com  -> Hermes
+```
+
+Put all protected hostnames under the same Cloudflare Access application if you want one login session across the portal and linked tools.
+
+More deployment notes are in [docs/deployment.md](docs/deployment.md).
 
 ## Configuration
 
@@ -43,58 +103,44 @@ Tracked template:
 config/portal.example.json
 ```
 
-Local private override, ignored by git:
+Private local override:
 
 ```text
 config/portal.local.json
 ```
 
-Do not commit private hostnames, service names, tokens, API keys, or personal images. Keep them in `portal.local.json`, environment variables, or your deployment platform.
+Edit `config/portal.local.json` to add your own domain, services, health checks, port labels, and ops links. Do not commit private hostnames, service names, tokens, API keys, or personal images.
+
+More config examples are in [docs/configuration.md](docs/configuration.md).
 
 ## Backend API
 
-- `GET /api/config` returns the sanitized public UI configuration.
-- `GET /api/status` returns configured service health checks.
-- `GET /api/monitor` returns host metrics, benchmark summary, benchmark automation status, and service health.
+- `GET /api/config` returns sanitized public UI configuration.
+- `GET /api/status` returns configured TCP service health checks.
+- `GET /api/monitor` returns host metrics, benchmark summary, automation status, and service health.
 - `GET /api/benchmark` returns the latest sanitized benchmark import plus automation status.
 
 ## Benchmark Import
 
-Run the importer manually when you want to refresh the Monitor benchmark panel immediately:
+Run once:
 
 ```bash
-./scripts/run-benchmark.sh
+./start.sh benchmark
 ```
 
-The script downloads YABS, runs it, saves the raw output under `data/*.raw.log`, then writes structured monitor data to:
-
-```text
-data/benchmark.local.json
-```
-
-It also writes scheduler/run state to:
-
-```text
-data/benchmark-status.local.json
-```
-
-To make the benchmark panel update automatically, install the user-level systemd timer. The default interval is every 6 hours, with the first run scheduled about 5 minutes after enabling:
+Install a user-level systemd timer:
 
 ```bash
 ./scripts/install-benchmark-timer.sh
 ```
 
-Use a custom interval in seconds if needed:
+Use a custom interval in seconds:
 
 ```bash
 ./scripts/install-benchmark-timer.sh 43200
 ```
 
-Both the local benchmark JSON, scheduler state, and raw logs are ignored by git. You can pass normal YABS flags through the wrapper, for example:
-
-```bash
-./scripts/run-benchmark.sh -s
-```
+Benchmark JSON, scheduler state, raw logs, and lock files are ignored by git.
 
 ## Project Layout
 
@@ -102,20 +148,29 @@ Both the local benchmark JSON, scheduler state, and raw logs are ignored by git.
 - `site/index.html` static shell and default SEO metadata
 - `site/app.js` UI rendering, route switching, status polling, and canvas effects
 - `site/styles.css` visual design
-- `scripts/run-benchmark.sh` YABS import wrapper with run status updates
-- `scripts/install-benchmark-timer.sh` optional user-level systemd timer installer
+- `config/portal.example.json` public template config
+- `.env.example` Docker Compose defaults
+- `start.sh` one-command deploy helper
+- `scripts/run-benchmark.sh` YABS import wrapper
+- `scripts/install-benchmark-timer.sh` optional systemd timer installer
 - `scripts/parse-yabs.mjs` raw YABS log parser
 - `data/benchmark.example.json` public empty benchmark template
-- `config/portal.example.json` public template config
-- `docker-compose.yml` runtime container settings
+- `docs/` deployment, configuration, and maintenance docs
 
-## GitHub Safety Checklist
+## Security Notes
+
+- Keep Hiraeth bound to localhost unless you have a separate authentication layer.
+- Use Cloudflare Access, Nginx auth, VPN, or another gate for public exposure.
+- Keep deployment-specific values in `.env` or `config/portal.local.json`.
+- Do not commit `.env`, `config/*.local.json`, private keys, tunnel tokens, benchmark raw logs, or personal images.
 
 Before pushing a public repository:
 
 ```bash
 git status --ignored --short
-rg -n "token|secret|password|api[_-]?key|your-private-domain" . -g '!config/portal.local.json' -g '!site/local-icon.*' -g '!data/benchmark.local.json' -g '!data/benchmark-status.local.json' -g '!data/*.raw.log' -g '!geekbench_claim.url'
+rg -n "token|secret|password|api[_-]?key|your-private-domain" . -g "!config/portal.local.json" -g "!site/local-icon.*" -g "!data/benchmark.local.json" -g "!data/benchmark-status.local.json" -g "!data/*.raw.log" -g "!geekbench_claim.url"
 ```
 
-`config/portal.local.json`, `site/local-icon.*`, `data/benchmark.local.json`, `data/benchmark-status.local.json`, `data/*.raw.log`, and `geekbench_claim.url` are intentionally ignored.
+## License
+
+Add a `LICENSE` file before presenting this as a public reusable project.

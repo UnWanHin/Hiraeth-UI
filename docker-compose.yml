@@ -1,16 +1,17 @@
 services:
   portal:
     image: node:22-alpine
-    container_name: studio-portal
+    container_name: ${HIRAETH_CONTAINER_NAME:-hiraeth-ui}
     restart: unless-stopped
     network_mode: host
     working_dir: /app
     environment:
-      HOST: 127.0.0.1
-      PORT: 8790
-      PORTAL_CONFIG: /app/config/portal.local.json
-      BENCHMARK_DATA: /app/data/benchmark.local.json
-      BENCHMARK_STATUS: /app/data/benchmark-status.local.json
+      HOST: ${HIRAETH_HOST:-127.0.0.1}
+      PORT: ${HIRAETH_PORT:-8790}
+      STATIC_ROOT: /app/site
+      PORTAL_CONFIG: ${PORTAL_CONFIG:-/app/config/portal.local.json}
+      BENCHMARK_DATA: ${BENCHMARK_DATA:-/app/data/benchmark.local.json}
+      BENCHMARK_STATUS: ${BENCHMARK_STATUS:-/app/data/benchmark-status.local.json}
     command: ["node", "/app/server.mjs"]
     volumes:
       - ./server.mjs:/app/server.mjs:ro

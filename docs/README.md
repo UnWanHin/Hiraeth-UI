@@ -1,12 +1,14 @@
-# Hiraeth UI Docs
+# Hiraeth UI Documentation
 
-This directory stores operational notes, issue records, and design decisions for the portal.
+This directory stores project context that should survive across agent sessions.
 
-## Structure
+## User Docs
 
-- `issues/`: active and historical debugging records, regressions, incidents, and verification notes.
-- `decisions/`: future ADRs for architectural decisions.
+- [Deployment Guide](deployment.md)
+- [Configuration Guide](configuration.md)
 
-## Maintenance Rule
+## Issues
 
-When an agent or human changes routing, rendering, deployment, monitoring, or public metadata, update the relevant document in `docs/` before closing the task. If a regression is found, create or update an issue record in `docs/issues/` with symptoms, evidence, suspected causes, fix attempts, and verification status.
+- Keep debugging notes, regressions, and incident records in `docs/issues/`.
+- Use one dated markdown file per issue when practical.
+- Update the relevant issue file whenever the root cause, fix attempt, verification result, or rollback decision changes.

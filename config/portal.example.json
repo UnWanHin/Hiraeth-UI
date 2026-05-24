@@ -79,7 +79,7 @@
       "code": "DOCS",
       "name": "Project Docs",
       "description": "Replace this with your own repository or documentation link.",
-      "href": "https://github.com/your-org/studio-portal",
+      "href": "https://github.com/your-org/Hiraeth-UI",
       "port": null,
       "scope": "external",
       "accent": "green"
@@ -100,7 +100,7 @@
     }
   ],
   "portNames": {
-    "8790": "Studio Portal"
+    "8790": "Hiraeth"
   },
   "heroTerminal": [
     {
@@ -143,7 +143,7 @@
     {
       "name": "Project Repository",
       "description": "Source and deployment docs",
-      "href": "https://github.com/your-org/studio-portal"
+      "href": "https://github.com/your-org/Hiraeth-UI"
     },
     {
       "name": "Docker Compose Docs",
