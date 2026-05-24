@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Environment and local config
+.env
+.env.*
+!.env.example
+config/portal.local.json
+config/*.local.json
+*.local.json
+
+# Local assets and deployment-only files
+site/local-icon.*
+
+# Benchmark/runtime output
+data/benchmark.local.json
+data/benchmark-status.local.json
+data/*.local.json
+data/*.raw.log
+data/*.tmp
+data/benchmark.lock/
+geekbench_claim.url
+
+# Logs and temp files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+.tmp/
+tmp/
+.cache/
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+
+# OS/editor state
+.DS_Store
+.vscode/
+.idea/

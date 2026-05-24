@@ -1,0 +1,33 @@
+{
+  "updatedAt": null,
+  "status": "empty",
+  "source": "none",
+  "summary": "No benchmark result uploaded yet.",
+  "system": {
+    "os": "",
+    "kernel": "",
+    "virtualization": "",
+    "location": "",
+    "isp": "",
+    "asn": "",
+    "host": "",
+    "country": ""
+  },
+  "cpu": {
+    "model": "",
+    "cores": null,
+    "singleCore": null,
+    "multiCore": null,
+    "fullTest": ""
+  },
+  "memory": {
+    "total": "",
+    "swap": ""
+  },
+  "disk": [],
+  "network": [],
+  "raw": {
+    "path": "",
+    "note": "Run scripts/run-benchmark.sh on the host to generate data/benchmark.local.json."
+  }
+}

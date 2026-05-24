@@ -1,0 +1,19 @@
+services:
+  portal:
+    image: node:22-alpine
+    container_name: studio-portal
+    restart: unless-stopped
+    network_mode: host
+    working_dir: /app
+    environment:
+      HOST: 127.0.0.1
+      PORT: 8790
+      PORTAL_CONFIG: /app/config/portal.local.json
+      BENCHMARK_DATA: /app/data/benchmark.local.json
+      BENCHMARK_STATUS: /app/data/benchmark-status.local.json
+    command: ["node", "/app/server.mjs"]
+    volumes:
+      - ./server.mjs:/app/server.mjs:ro
+      - ./site:/app/site:ro
+      - ./config:/app/config:ro
+      - ./data:/app/data:ro

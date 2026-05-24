@@ -1,0 +1,154 @@
+{
+  "brand": {
+    "appName": "Hiraeth",
+    "productName": "Hiraeth",
+    "publicHost": "portal.example.com",
+    "canonicalUrl": "https://portal.example.com/",
+    "description": "A self-hosted route console for services, monitoring, local ports, and operator tools.",
+    "iconPath": "/icon.svg",
+    "ogImage": "https://portal.example.com/og.svg",
+    "protectedLabel": "Access protected",
+    "bindLabel": "127.0.0.1:8790",
+    "launcherFooterLabel": "Protected route"
+  },
+  "routes": [
+    {
+      "id": "home",
+      "code": "H",
+      "name": "Home",
+      "description": "Route overview and live summary.",
+      "href": "/",
+      "accent": "white"
+    },
+    {
+      "id": "services",
+      "code": "SVC",
+      "name": "Services",
+      "description": "Launch local apps and external consoles.",
+      "href": "/services",
+      "accent": "green"
+    },
+    {
+      "id": "monitor",
+      "code": "MON",
+      "name": "Monitor",
+      "description": "CPU, RAM, disk, uptime, and health.",
+      "href": "/monitor",
+      "accent": "blue"
+    },
+    {
+      "id": "ports",
+      "code": "TCP",
+      "name": "Ports",
+      "description": "Local listener and tunnel targets.",
+      "href": "/ports",
+      "accent": "yellow"
+    },
+    {
+      "id": "ops",
+      "code": "OPS",
+      "name": "Ops",
+      "description": "Operations links and documentation.",
+      "href": "/ops",
+      "accent": "red"
+    }
+  ],
+  "services": [
+    {
+      "id": "portal",
+      "code": "PORTAL",
+      "name": "Hiraeth",
+      "description": "Primary Hiraeth control surface and service launcher.",
+      "href": "/",
+      "port": 8790,
+      "scope": "public",
+      "accent": "white"
+    },
+    {
+      "id": "monitor",
+      "code": "MON",
+      "name": "Server Monitor",
+      "description": "Live CPU, RAM, disk, uptime, and port health.",
+      "href": "/monitor",
+      "port": 8790,
+      "scope": "public",
+      "accent": "blue"
+    },
+    {
+      "id": "docs",
+      "code": "DOCS",
+      "name": "Project Docs",
+      "description": "Replace this with your own repository or documentation link.",
+      "href": "https://github.com/your-org/studio-portal",
+      "port": null,
+      "scope": "external",
+      "accent": "green"
+    }
+  ],
+  "healthChecks": [
+    {
+      "id": "portal",
+      "name": "Hiraeth",
+      "host": "127.0.0.1",
+      "port": 8790
+    },
+    {
+      "id": "monitor",
+      "name": "Server Monitor",
+      "host": "127.0.0.1",
+      "port": 8790
+    }
+  ],
+  "portNames": {
+    "8790": "Studio Portal"
+  },
+  "heroTerminal": [
+    {
+      "code": "00",
+      "command": "mount route://portal.example.com",
+      "status": "OK"
+    },
+    {
+      "code": "01",
+      "command": "enable access gate",
+      "status": "READY"
+    },
+    {
+      "code": "02",
+      "command": "scan local ports --watch 8790",
+      "status": "LIVE"
+    }
+  ],
+  "ticker": [
+    "STUDIO://ROUTE MATRIX ONLINE",
+    "ACCESS:GATE_ENABLED",
+    "TUNNEL:LOCALHOST:8790",
+    "MONITOR:/monitor",
+    "SERVICES:/services",
+    "PORTS:/ports",
+    "OPS:/ops",
+    "PIXEL TRAIL:ARMED"
+  ],
+  "opsLinks": [
+    {
+      "name": "Cloudflare Zero Trust",
+      "description": "Tunnel and Access",
+      "href": "https://one.dash.cloudflare.com/"
+    },
+    {
+      "name": "Cloudflare Dashboard",
+      "description": "DNS and hostname routes",
+      "href": "https://dash.cloudflare.com/"
+    },
+    {
+      "name": "Project Repository",
+      "description": "Source and deployment docs",
+      "href": "https://github.com/your-org/studio-portal"
+    },
+    {
+      "name": "Docker Compose Docs",
+      "description": "Runtime configuration",
+      "href": "https://docs.docker.com/compose/"
+    }
+  ]
+}
