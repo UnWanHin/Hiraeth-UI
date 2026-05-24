@@ -1954,3 +1954,630 @@ h2,
   .monitor-service-row { grid-template-columns: 1fr; }
   .monitor-service-actions { justify-content: flex-start; }
 }
+
+/* hiraeth pixel-router redesign */
+
+:root {
+  --bg: #000200;
+  --surface: #020502;
+  --surface-elevated: #041006;
+  --surface-card: #061609;
+  --surface-hover: #0a1d0f;
+  --line: rgba(47, 255, 142, 0.22);
+  --line-strong: rgba(47, 255, 142, 0.54);
+  --text: #effff5;
+  --body: #b9eecb;
+  --muted: #7dbb90;
+  --faint: #41664b;
+  --green: #2fff8e;
+  --blue: #54d9ff;
+  --amber: #ffd85a;
+  --red: #ff6262;
+  --red-deep: #8d1414;
+  --radius: 4px;
+  --radius-sm: 2px;
+  --pixel-font: "SFMono-Regular", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+}
+
+html,
+body {
+  background: var(--bg);
+}
+
+body {
+  min-width: 320px;
+  background: var(--bg);
+  font-family: var(--pixel-font);
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+body,
+button,
+input {
+  font-variant-ligatures: none;
+}
+
+body::before {
+  z-index: -5;
+  opacity: 1;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(47, 255, 142, 0.26) 1px, transparent 1.8px) 0 0 / 18px 18px,
+    radial-gradient(circle at 1px 1px, rgba(84, 217, 255, 0.18) 1px, transparent 1.8px) 9px 7px / 72px 72px,
+    linear-gradient(90deg, rgba(47, 255, 142, 0.08), transparent 18%, transparent 82%, rgba(47, 255, 142, 0.06)),
+    repeating-linear-gradient(90deg, transparent 0 95px, rgba(47, 255, 142, 0.055) 95px 96px, transparent 96px 132px),
+    repeating-linear-gradient(0deg, transparent 0 95px, rgba(47, 255, 142, 0.04) 95px 96px, transparent 96px 132px),
+    #000200;
+}
+
+body::after {
+  z-index: -1;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0) 0 3px, rgba(47, 255, 142, 0.035) 3px 4px, rgba(0, 0, 0, 0) 4px 8px),
+    linear-gradient(180deg, rgba(0, 2, 0, 0.1), rgba(0, 2, 0, 0.58) 58%, rgba(0, 2, 0, 0.94));
+}
+
+#mesh {
+  z-index: -2;
+  opacity: 0.72;
+  filter: drop-shadow(0 0 12px rgba(47, 255, 142, 0.18));
+}
+
+#pixel-trail {
+  z-index: 3;
+  opacity: 0.74;
+  filter: drop-shadow(0 0 7px rgba(47, 255, 142, 0.58));
+}
+
+.shell {
+  width: min(1240px, calc(100% - 28px));
+  padding-top: 16px;
+}
+
+.topbar {
+  top: 10px;
+  min-height: 66px;
+  border-width: 2px;
+  background:
+    linear-gradient(180deg, rgba(5, 18, 8, 0.95), rgba(1, 5, 2, 0.9)),
+    rgba(0, 2, 0, 0.92);
+  box-shadow:
+    inset 0 0 0 1px rgba(236, 255, 245, 0.035),
+    0 0 0 1px rgba(0, 0, 0, 0.9),
+    0 18px 55px rgba(0, 0, 0, 0.46),
+    0 0 36px rgba(47, 255, 142, 0.08);
+}
+
+.topbar::before {
+  position: absolute;
+  inset: auto 12px 7px;
+  height: 3px;
+  pointer-events: none;
+  content: "";
+  background: repeating-linear-gradient(90deg, var(--green) 0 10px, transparent 10px 15px, var(--blue) 15px 21px, transparent 21px 31px);
+  opacity: 0.72;
+}
+
+.brand-mark {
+  border-radius: 2px;
+  background: #000200;
+  box-shadow:
+    inset 0 0 0 1px rgba(47, 255, 142, 0.2),
+    0 0 18px rgba(47, 255, 142, 0.18);
+}
+
+.brand strong {
+  color: var(--green);
+  font-size: 1rem;
+  text-shadow: 0 0 14px rgba(47, 255, 142, 0.46);
+}
+
+.nav,
+.language-switcher,
+.launcher-trigger,
+.clock {
+  background:
+    repeating-linear-gradient(90deg, rgba(47, 255, 142, 0.045) 0 5px, transparent 5px 12px),
+    rgba(1, 8, 3, 0.72);
+}
+
+.nav a,
+.language-switcher button,
+.launcher-trigger,
+.button,
+.inline-action,
+.icon-button {
+  min-width: 0;
+  border-radius: 2px;
+  text-transform: uppercase;
+  box-shadow: inset 0 -2px 0 rgba(47, 255, 142, 0.05);
+}
+
+.nav a.active {
+  color: #001904;
+  background: var(--green);
+  box-shadow: 0 0 18px rgba(47, 255, 142, 0.34);
+}
+
+.clock span {
+  color: var(--green);
+  text-shadow: 0 0 12px rgba(47, 255, 142, 0.34);
+}
+
+.page {
+  padding-top: 42px;
+}
+
+h1 {
+  font-size: 4.05rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+h2,
+h3 {
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--green);
+  text-shadow: 0 0 12px rgba(47, 255, 142, 0.42);
+}
+
+.eyebrow::before {
+  width: 8px;
+  height: 8px;
+  content: "";
+  background: currentColor;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.lead {
+  color: var(--body);
+  line-height: 1.65;
+}
+
+.home-hero {
+  grid-template-columns: minmax(0, 1.12fr) minmax(380px, 0.88fr);
+  gap: 18px;
+  min-height: 540px;
+}
+
+.hero-copy,
+.route-hub,
+.page-head,
+.service-card,
+.service-detail,
+.monitor-card,
+.monitor-panel,
+.route-note,
+.ops-grid a,
+.home-strip,
+.launcher-panel,
+.launcher-preview,
+.route-wave,
+.hub-stage,
+.hub-status,
+.port-row,
+.fact-grid div,
+.monitor-service-row,
+.benchmark-ledger div,
+.benchmark-summary,
+.benchmark-table,
+.benchmark-row,
+.oracle-summary div,
+.oracle-panel-block,
+.oracle-row {
+  border-width: 2px;
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(6, 22, 9, 0.95), rgba(0, 5, 1, 0.92)),
+    #020502;
+  box-shadow:
+    inset 0 0 0 1px rgba(236, 255, 245, 0.035),
+    inset 0 -18px 0 rgba(47, 255, 142, 0.018),
+    0 0 0 1px rgba(0, 0, 0, 0.9),
+    0 20px 54px rgba(0, 0, 0, 0.32);
+}
+
+.hero-copy,
+.page-head,
+.route-hub,
+.monitor-panel,
+.service-card,
+.monitor-card,
+.ops-grid a,
+.route-note {
+  overflow: hidden;
+}
+
+.hero-copy::before,
+.page-head::before,
+.benchmark-panel::before,
+.oracle-panel::before {
+  height: 5px;
+  background: repeating-linear-gradient(90deg, var(--green) 0 9px, transparent 9px 14px, var(--blue) 14px 20px, transparent 20px 30px, var(--amber) 30px 35px, transparent 35px 45px);
+  box-shadow: 0 0 18px rgba(47, 255, 142, 0.38);
+}
+
+.hero-copy::after,
+.page-head::after,
+.route-hub::after,
+.monitor-panel::after,
+.service-card::before,
+.monitor-card::before,
+.route-card::before,
+.port-row::before,
+.launcher-option::before,
+.ops-grid a::before {
+  pointer-events: none;
+  background:
+    radial-gradient(circle at var(--card-x, 50%) var(--card-y, 50%), rgba(47, 255, 142, 0.12), transparent 18rem),
+    radial-gradient(circle at 1px 1px, rgba(47, 255, 142, 0.12) 1px, transparent 1.8px) 0 0 / 16px 16px,
+    repeating-linear-gradient(0deg, rgba(47, 255, 142, 0.032) 0 1px, transparent 1px 8px);
+}
+
+.hero-copy {
+  min-height: 540px;
+  padding: 42px;
+}
+
+.hero-copy .lead {
+  max-width: 660px;
+}
+
+.shine-text {
+  color: var(--green);
+  letter-spacing: 0;
+  text-shadow:
+    0 0 16px rgba(47, 255, 142, 0.54),
+    0 0 42px rgba(47, 255, 142, 0.18);
+  filter: none;
+}
+
+.shine-text::before {
+  display: block;
+  width: min(420px, 100%);
+  height: 10px;
+  margin-bottom: 14px;
+  content: "";
+  background: repeating-linear-gradient(90deg, var(--green) 0 12px, transparent 12px 17px, var(--blue) 17px 24px, transparent 24px 34px);
+  box-shadow: 0 0 18px rgba(47, 255, 142, 0.28);
+}
+
+.hero-terminal {
+  border-width: 2px;
+  border-radius: 2px;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(47, 255, 142, 0.11) 1px, transparent 1.8px) 0 0 / 14px 14px,
+    rgba(0, 6, 2, 0.82);
+}
+
+.hero-terminal div {
+  border-left-width: 4px;
+}
+
+.route-hub {
+  padding: 16px;
+}
+
+.hub-stage {
+  min-height: 370px;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(47, 255, 142, 0.22) 1px, transparent 1.8px) 0 0 / 18px 18px,
+    radial-gradient(circle at 1px 1px, rgba(84, 217, 255, 0.16) 1px, transparent 1.8px) 8px 8px / 54px 54px,
+    #000200;
+}
+
+.hub-stage::before,
+.hub-stage::after {
+  border-radius: 2px;
+  box-shadow: 0 0 26px rgba(47, 255, 142, 0.08);
+}
+
+.hub-core {
+  border-width: 2px;
+  border-radius: 2px;
+}
+
+.hub-node {
+  border-width: 2px;
+  border-radius: 2px;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(47, 255, 142, 0.1) 1px, transparent 1.8px) 0 0 / 12px 12px,
+    rgba(0, 7, 2, 0.9);
+}
+
+.hub-node strong,
+.route-card strong,
+.service-card h3,
+.ops-grid span {
+  color: var(--text);
+  text-shadow: 0 0 10px rgba(47, 255, 142, 0.18);
+}
+
+.hub-status {
+  grid-template-columns: 96px minmax(0, 1fr);
+}
+
+.ring {
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(47, 255, 142, 0.18), 0 0 22px rgba(47, 255, 142, 0.1);
+}
+
+.route-grid,
+.service-grid,
+.monitor-grid,
+.ops-grid {
+  gap: 14px;
+}
+
+.route-card,
+.service-card,
+.monitor-card,
+.ops-grid a,
+.port-row,
+.launcher-option,
+.hub-node {
+  border-width: 2px;
+}
+
+.route-card,
+.service-card {
+  min-height: 226px;
+  align-content: space-between;
+}
+
+.route-card {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.route-card i {
+  position: absolute;
+  right: 16px;
+  bottom: 18px;
+}
+
+.route-code,
+.service-code,
+.row-icon,
+.detail-code,
+.preview-code {
+  border-width: 2px;
+  border-radius: 1px;
+  color: #001904;
+  background: var(--accent, var(--green));
+  box-shadow: 0 0 22px color-mix(in srgb, var(--accent, var(--green)) 30%, transparent);
+}
+
+.status-chip,
+.signal,
+.port-action,
+.watchdog-state,
+.monitor-card small,
+.fact-grid span,
+.benchmark-ledger span,
+.benchmark-summary span,
+.benchmark-row span,
+.benchmark-row small,
+.oracle-summary span,
+.oracle-region small {
+  font-size: 0.7rem;
+}
+
+.service-meta,
+.detail-main,
+.monitor-service-row,
+.port-row,
+.benchmark-row,
+.oracle-row {
+  min-width: 0;
+}
+
+.service-card p,
+.detail-main p,
+.route-note p:last-child,
+.benchmark-summary small {
+  overflow-wrap: anywhere;
+}
+
+.monitor-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.monitor-card {
+  min-height: 166px;
+}
+
+.monitor-card-head strong {
+  font-size: 1.55rem;
+}
+
+.meter,
+.throughput,
+.oracle-bar {
+  border-radius: 0;
+}
+
+.meter span,
+.throughput b,
+.oracle-bar b {
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent, var(--green)) 28%, transparent);
+}
+
+.fact-grid div,
+.monitor-service-row,
+.port-row,
+.benchmark-row,
+.oracle-row {
+  background:
+    radial-gradient(circle at 1px 1px, rgba(47, 255, 142, 0.07) 1px, transparent 1.7px) 0 0 / 14px 14px,
+    rgba(1, 8, 3, 0.68);
+}
+
+.monitor-service-row {
+  grid-template-columns: 86px minmax(130px, 0.72fr) minmax(0, 1fr) auto;
+}
+
+.inline-action,
+.button.primary {
+  color: #001904;
+  border-color: rgba(47, 255, 142, 0.92);
+  background: var(--green);
+  text-shadow: none;
+}
+
+.button.secondary,
+.inline-action.restart-action,
+.launcher-trigger {
+  color: var(--green);
+  background:
+    radial-gradient(circle at 1px 1px, rgba(47, 255, 142, 0.09) 1px, transparent 1.7px) 0 0 / 12px 12px,
+    rgba(1, 8, 3, 0.72);
+}
+
+.button:hover,
+.button:focus-visible,
+.inline-action:hover,
+.inline-action:focus-visible,
+.launcher-trigger:hover,
+.launcher-trigger:focus-visible,
+.nav a:hover,
+.nav a:focus-visible,
+.language-switcher button:hover,
+.language-switcher button:focus-visible {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  box-shadow: 0 0 20px rgba(47, 255, 142, 0.16), inset 0 0 0 1px rgba(47, 255, 142, 0.14);
+}
+
+.launcher-panel {
+  border-width: 2px;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(47, 255, 142, 0.12) 1px, transparent 1.8px) 0 0 / 16px 16px,
+    rgba(0, 5, 1, 0.98);
+}
+
+.launcher-search input {
+  color: var(--green);
+}
+
+.terminal-ticker {
+  height: 36px;
+  border-top-width: 2px;
+}
+
+.ticker-track span,
+.ticker-track::after {
+  font-size: 0.7rem;
+}
+
+@media (max-width: 1040px) {
+  .home-hero,
+  .page-head,
+  .monitor-grid,
+  .monitor-split,
+  .ports-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .monitor-grid,
+  .route-grid,
+  .ops-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-hero {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .shell {
+    width: min(100% - 18px, 1240px);
+    padding-top: 9px;
+  }
+
+  .topbar {
+    top: 7px;
+    grid-template-columns: 1fr;
+  }
+
+  .page {
+    padding-top: 32px;
+  }
+
+  h1 {
+    font-size: 2.35rem;
+  }
+
+  h2 {
+    font-size: 1.05rem;
+  }
+
+  .hero-copy,
+  .page-head,
+  .monitor-panel,
+  .route-note {
+    padding: 20px;
+  }
+
+  .hero-copy {
+    min-height: 0;
+  }
+
+  .route-grid,
+  .service-grid,
+  .monitor-grid,
+  .ops-grid,
+  .home-strip,
+  .fact-grid,
+  .service-detail,
+  .monitor-service-row,
+  .oracle-row,
+  .benchmark-row.network,
+  .benchmark-row.disk {
+    grid-template-columns: 1fr;
+  }
+
+  .route-card,
+  .service-card,
+  .ops-grid a {
+    min-height: 160px;
+  }
+
+  .hub-stage {
+    min-height: 430px;
+  }
+
+  .monitor-service-actions,
+  .oracle-latency,
+  .port-action {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .benchmark-row.network,
+  .benchmark-row.disk {
+    min-width: 0;
+  }
+
+  .terminal-ticker {
+    height: 30px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #mesh,
+  #pixel-trail,
+  .terminal-ticker,
+  .topbar::after,
+  .hero-copy::after,
+  .page-head::after {
+    animation: none !important;
+  }
+}

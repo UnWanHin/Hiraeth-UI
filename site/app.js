@@ -1992,8 +1992,8 @@ function startMesh() {
     context.imageSmoothingEnabled = false;
     nodes.length = 0;
 
-    const grid = 12 * ratio;
-    const count = Math.max(44, Math.min(120, Math.floor((window.innerWidth * window.innerHeight) / 18000)));
+    const grid = 10 * ratio;
+    const count = Math.max(90, Math.min(180, Math.floor((window.innerWidth * window.innerHeight) / 10500)));
     for (let index = 0; index < count; index += 1) {
       nodes.push({
         x: snap(Math.random() * width, grid),
@@ -2052,9 +2052,9 @@ function startMesh() {
         const dx = a.x - b.x;
         const dy = a.y - b.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        const limit = 118 * ratio;
+        const limit = 104 * ratio;
         if (distance < limit && Math.abs(dx) + Math.abs(dy) > 18 * ratio) {
-          drawPixelLine(a, b, (1 - distance / limit) * 0.18);
+          drawPixelLine(a, b, (1 - distance / limit) * 0.14);
         }
       }
     }

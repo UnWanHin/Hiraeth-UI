@@ -11,7 +11,7 @@ The default deployment binds to `127.0.0.1:8790`, so it is intended to sit behin
 - Live monitor API for CPU, memory, disk, uptime, process count, and TCP service health
 - Optional YABS benchmark import for network speed, disk IO, and Geekbench snapshots
 - Browser-side Oracle region latency probe
-- Pixel-terminal UI with black canvas styling and pointer trail effects
+- Pixel-router UI with dense dot-field background, black canvas styling, and pointer trail effects
 - Security headers enabled by default
 - Open-source hygiene: local config, benchmark output, secrets, and personal assets are ignored
 
