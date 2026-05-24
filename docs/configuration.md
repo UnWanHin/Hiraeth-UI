@@ -25,12 +25,14 @@ Set public-facing labels and metadata:
     "canonicalUrl": "https://portal.example.com/",
     "description": "A self-hosted route console.",
     "iconPath": "/icon.svg",
+    "faviconPath": "/icon.svg",
+    "brandImagePath": "/icon.svg",
     "ogImage": "https://portal.example.com/og.svg"
   }
 }
 ```
 
-Use absolute HTTPS URLs for Open Graph images when the portal is publicly shared.
+Use `faviconPath` for the browser tab icon and `brandImagePath` for in-page marks such as the top bar and route hub. Use absolute HTTPS URLs for Open Graph images when the portal is publicly shared.
 
 ## Routes
 

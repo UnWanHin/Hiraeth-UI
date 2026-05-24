@@ -112,7 +112,7 @@ run_health_check() {
   fi
 
   for ((index = 1; index <= 15; index++)); do
-    if curl -fsS --max-time 3 "$url" >/dev/null; then
+    if curl -fsS --max-time 3 "$url" >/dev/null 2>&1; then
       info "health check passed: $url"
       return 0
     fi

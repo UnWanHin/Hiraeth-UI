@@ -21,6 +21,8 @@ const defaultConfig = {
     canonicalUrl: "https://portal.example.com/",
     description: "A protected route console for services, monitoring, local ports, and operator tools.",
     iconPath: "/icon.svg",
+    faviconPath: "/icon.svg",
+    brandImagePath: "/icon.svg",
     ogImage: "https://portal.example.com/og.svg",
     protectedLabel: "Access protected",
     bindLabel: "127.0.0.1:8790",
@@ -178,13 +180,16 @@ function cleanHost(value, fallback = "127.0.0.1") {
 
 function cleanBrand(value) {
   const brand = isRecord(value) ? value : {};
+  const iconPath = cleanHref(brand.iconPath, defaultConfig.brand.iconPath);
   return {
     appName: cleanText(brand.appName, defaultConfig.brand.appName, 80),
     productName: cleanText(brand.productName, defaultConfig.brand.productName, 80),
     publicHost: cleanText(brand.publicHost, defaultConfig.brand.publicHost, 120),
     canonicalUrl: cleanHref(brand.canonicalUrl, defaultConfig.brand.canonicalUrl),
     description: cleanText(brand.description, defaultConfig.brand.description, 260),
-    iconPath: cleanHref(brand.iconPath, defaultConfig.brand.iconPath),
+    iconPath,
+    faviconPath: cleanHref(brand.faviconPath, iconPath),
+    brandImagePath: cleanHref(brand.brandImagePath, iconPath),
     ogImage: cleanHref(brand.ogImage, defaultConfig.brand.ogImage),
     protectedLabel: cleanText(brand.protectedLabel, defaultConfig.brand.protectedLabel, 80),
     bindLabel: cleanText(brand.bindLabel, defaultConfig.brand.bindLabel, 80),
@@ -995,5 +1000,5 @@ const server = createServer((req, res) => {
 });
 
 server.listen(port, host, () => {
-  console.log("studio-portal listening on http://" + host + ":" + port);
+  console.log("hiraeth-ui listening on http://" + host + ":" + port);
 });

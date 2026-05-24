@@ -6,6 +6,8 @@
     "canonicalUrl": "https://portal.example.com/",
     "description": "A self-hosted route console for services, monitoring, local ports, and operator tools.",
     "iconPath": "/icon.svg",
+    "faviconPath": "/icon.svg",
+    "brandImagePath": "/icon.svg",
     "ogImage": "https://portal.example.com/og.svg",
     "protectedLabel": "Access protected",
     "bindLabel": "127.0.0.1:8790",

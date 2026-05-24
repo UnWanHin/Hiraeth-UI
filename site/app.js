@@ -22,6 +22,8 @@ let brandConfig = {
   canonicalUrl: "https://portal.example.com/",
   description: "A protected route console for services, monitoring, local ports, and operator tools.",
   iconPath: "/icon.svg",
+  faviconPath: "/icon.svg",
+  brandImagePath: "/icon.svg",
   ogImage: "https://portal.example.com/og.svg",
   protectedLabel: "Access protected",
   bindLabel: "127.0.0.1:8790",
@@ -899,6 +901,9 @@ function updateBrandContent() {
   const title = brandConfig.appName || "Hiraeth";
   const productName = brandConfig.productName || title;
   const description = localizedBrandDescription();
+  const iconPath = brandConfig.iconPath || "/icon.svg";
+  const faviconPath = brandConfig.faviconPath || iconPath;
+  const brandImagePath = brandConfig.brandImagePath || iconPath;
   document.title = title;
   setAttr("meta[name=\"description\"]", "content", description);
   setAttr("link[rel=\"canonical\"]", "href", brandConfig.canonicalUrl);
@@ -912,11 +917,11 @@ function updateBrandContent() {
   setAttr("meta[name=\"twitter:title\"]", "content", title);
   setAttr("meta[name=\"twitter:description\"]", "content", description);
   setAttr("meta[name=\"twitter:image\"]", "content", brandConfig.ogImage);
-  setAttr("link[rel=\"icon\"]", "href", brandConfig.iconPath);
-  setAttr("link[rel=\"shortcut icon\"]", "href", brandConfig.iconPath);
-  setAttr("link[rel=\"apple-touch-icon\"]", "href", brandConfig.iconPath);
-  setAttr(".brand-mark img", "src", brandConfig.iconPath);
-  setAttr(".hub-core img", "src", brandConfig.iconPath);
+  setAttr("link[rel=\"icon\"]", "href", faviconPath);
+  setAttr("link[rel=\"shortcut icon\"]", "href", faviconPath);
+  setAttr("link[rel=\"apple-touch-icon\"]", "href", brandImagePath);
+  setAttr(".brand-mark img", "src", brandImagePath);
+  setAttr(".hub-core img", "src", brandImagePath);
   setText(".brand strong", productName);
   setText(".brand small", brandConfig.publicHost);
   setText("#home-title", title);
