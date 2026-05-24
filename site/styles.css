@@ -2581,3 +2581,63 @@ h3 {
     animation: none !important;
   }
 }
+
+/* visible 4router-style pixel field fix */
+body::before {
+  z-index: 0;
+  opacity: 1;
+  background:
+    radial-gradient(circle at 2px 2px, rgba(47, 255, 142, 0.58) 0 1.7px, transparent 1.8px) 0 0 / 24px 24px,
+    radial-gradient(circle at 2px 2px, rgba(47, 255, 142, 0.34) 0 1.4px, transparent 1.5px) 11px 13px / 36px 36px,
+    radial-gradient(circle at 2px 2px, rgba(84, 217, 255, 0.24) 0 1.3px, transparent 1.4px) 7px 5px / 72px 72px,
+    linear-gradient(180deg, rgba(0, 2, 0, 0.18), rgba(0, 2, 0, 0.72)),
+    #000200;
+}
+
+body::after {
+  z-index: 1;
+  opacity: 1;
+  background:
+    radial-gradient(circle at var(--pointer-x, 50vw) var(--pointer-y, 50vh), rgba(47, 255, 142, 0.14), transparent 19rem),
+    repeating-linear-gradient(0deg, transparent 0 5px, rgba(47, 255, 142, 0.035) 5px 6px, transparent 6px 10px);
+  mix-blend-mode: screen;
+}
+
+#mesh {
+  z-index: 2;
+  opacity: 0.34;
+}
+
+#pixel-trail {
+  z-index: 7;
+  opacity: 0.95;
+}
+
+.shell,
+.launcher-modal {
+  position: relative;
+  z-index: 5;
+}
+
+.terminal-ticker {
+  z-index: 6;
+}
+
+.hero-copy,
+.route-hub,
+.page-head,
+.service-card,
+.service-detail,
+.monitor-card,
+.monitor-panel,
+.route-note,
+.ops-grid a,
+.home-strip,
+.launcher-panel,
+.launcher-preview,
+.port-row,
+.fact-grid div,
+.monitor-service-row {
+  background-color: rgba(0, 7, 2, 0.76);
+  background-blend-mode: screen, normal;
+}

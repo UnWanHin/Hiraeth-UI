@@ -2,7 +2,7 @@
 
 ## Status
 
-Resolved for static, route, API, and local runtime checks. Browser screenshot verification remains unavailable in this environment.
+Resolved for static, route, API, and local runtime checks after fixing the visible pixel-field stacking. Browser screenshot verification remains unavailable in this environment.
 
 ## Date
 
@@ -18,7 +18,7 @@ The previous CSS had several accumulated pixel styling passes. The redesign cons
 
 ## Root Cause
 
-This is planned visual work, not a production incident. The primary risk is UI regression: blank route pages, cached old assets, overflowing text, or background effects covering controls.
+This is planned visual work, not a production incident. After first deployment, the dot-field still did not read clearly because the background layer used negative stacking, which can sit behind the body/html background. The primary risk is UI regression: blank route pages, cached old assets, overflowing text, or background effects covering controls.
 
 ## Changes Made
 
@@ -26,6 +26,7 @@ This is planned visual work, not a production incident. The primary risk is UI r
 - Increased canvas mesh density while keeping animation bounded.
 - Updated CSS/JS cache-busting query strings.
 - Updated the public README feature summary to describe the pixel-router visual direction.
+- Added a visible 4router-style pixel-field fix that moves the dot background to a non-negative fixed layer and raises content layers above it.
 
 ## Verification
 
@@ -37,6 +38,7 @@ This is planned visual work, not a production incident. The primary risk is UI r
 - `/`, `/services`, `/monitor`, `/ports`, and `/ops` each returned HTTP 200 and the expected `body data-route` value.
 - Served HTML includes the new `styles.css?v=20260524-1815` and `app.js?v=20260524-1815` assets.
 - Served CSS includes the redesign marker, dot-field background rules, and pixel-font smoothing rules.
+- Served CSS includes the visible pixel-field fix, brighter green dot rule, and non-negative background stacking.
 - Served JS includes the mesh and pointer trail code.
 - `GET /api/status` returned 6/6 online services.
 - Open Graph metadata still includes title, description, image, URL, type, site name, image dimensions, and image alt text.
