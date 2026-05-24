@@ -1972,12 +1972,19 @@ function startMesh() {
   if (!context) return () => {};
 
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const nodes = [];
+  const blocks = [];
+  const lanes = [];
   let width = 0;
   let height = 0;
   let ratio = 1;
   let raf = 0;
   let frame = 0;
+  let seed = 8790;
+
+  function random() {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  }
 
   function snap(value, grid) {
     return Math.round(value / grid) * grid;
@@ -1990,84 +1997,99 @@ function startMesh() {
     canvas.style.width = window.innerWidth + "px";
     canvas.style.height = window.innerHeight + "px";
     context.imageSmoothingEnabled = false;
-    nodes.length = 0;
+    blocks.length = 0;
+    lanes.length = 0;
+    seed = 8790;
 
     const grid = 10 * ratio;
-    const count = Math.max(90, Math.min(180, Math.floor((window.innerWidth * window.innerHeight) / 10500)));
+    const count = Math.max(520, Math.min(1500, Math.floor((window.innerWidth * window.innerHeight) / 980)));
     for (let index = 0; index < count; index += 1) {
-      nodes.push({
-        x: snap(Math.random() * width, grid),
-        y: snap(Math.random() * height, grid),
-        vx: (Math.random() < 0.5 ? -1 : 1) * (0.06 + Math.random() * 0.16) * ratio,
-        vy: (Math.random() < 0.5 ? -1 : 1) * (0.04 + Math.random() * 0.12) * ratio,
-        size: (Math.random() < 0.82 ? 2 : 4) * ratio,
-        phase: Math.random() * Math.PI * 2,
-        blue: Math.random() < 0.18,
+      const x = snap(random() * width, grid);
+      const y = snap(random() * height, grid);
+      const sizeRoll = random();
+      const accentRoll = random();
+      const base = sizeRoll < 0.68 ? 2 : sizeRoll < 0.92 ? 3 : 5;
+      const yRatio = y / Math.max(1, height);
+      const xRatio = x / Math.max(1, width);
+      const greenBias = yRatio > 0.74 ? 0.075 : yRatio > 0.48 && xRatio > 0.22 && xRatio < 0.78 ? 0.038 : 0.006;
+      blocks.push({
+        x,
+        y,
+        size: base * ratio,
+        alpha: 0.08 + random() * 0.32,
+        phase: random() * Math.PI * 2,
+        drift: (random() < 0.5 ? -1 : 1) * (0.025 + random() * 0.07) * ratio,
+        tone: accentRoll < greenBias ? "green" : accentRoll < greenBias + 0.014 ? "blue" : "gray",
       });
+    }
+
+    const bandRatios = [0.045, 0.12, 0.47, 0.535, 0.61, 0.745, 0.905];
+    for (const band of bandRatios) {
+      const y = snap(height * band + (random() - 0.5) * 18 * ratio, grid);
+      const greenChance = band > 0.84 ? 0.22 : band > 0.46 && band < 0.66 ? 0.12 : 0.018;
+      for (let x = -140 * ratio + random() * 48 * ratio; x < width + 140 * ratio;) {
+        const gap = (10 + random() * 30) * ratio;
+        const segmentWidth = snap((18 + random() * (band > 0.46 ? 86 : 58)) * ratio, 4 * ratio);
+        const toneRoll = random();
+        lanes.push({
+          x: snap(x, 2 * ratio),
+          y,
+          width: segmentWidth,
+          height: (random() < 0.28 ? 4 : 2) * ratio,
+          alpha: 0.12 + random() * 0.24,
+          phase: random() * Math.PI * 2,
+          speed: (random() < 0.5 ? -1 : 1) * (0.018 + random() * 0.034) * ratio,
+          tone: toneRoll < greenChance ? "green" : toneRoll < greenChance + 0.014 ? "blue" : "gray",
+        });
+        x += segmentWidth + gap;
+      }
     }
   }
 
-  function drawPixelLine(a, b, alpha) {
-    const grid = 4 * ratio;
-    const x1 = snap(a.x, grid);
-    const y1 = snap(a.y, grid);
-    const x2 = snap(b.x, grid);
-    const y2 = snap(b.y, grid);
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const steps = Math.max(1, Math.floor(Math.max(Math.abs(dx), Math.abs(dy)) / (8 * ratio)));
-    context.fillStyle = "rgba(47, 255, 142, " + alpha.toFixed(3) + ")";
-    for (let step = 0; step <= steps; step += 1) {
-      const x = snap(x1 + (dx * step) / steps, grid);
-      const y = snap(y1 + (dy * step) / steps, grid);
-      context.fillRect(x, y, 2 * ratio, 2 * ratio);
-    }
+  function setPixelFill(tone, alpha) {
+    if (tone === "green") context.fillStyle = "rgba(47, 255, 142, " + Math.min(0.58, alpha + 0.08).toFixed(3) + ")";
+    else if (tone === "blue") context.fillStyle = "rgba(84, 217, 255, " + Math.min(0.46, alpha + 0.04).toFixed(3) + ")";
+    else context.fillStyle = "rgba(150, 150, 150, " + alpha.toFixed(3) + ")";
   }
 
   function draw() {
     context.clearRect(0, 0, width, height);
     frame += reduceMotion ? 0 : 1;
 
-    for (const node of nodes) {
-      if (!reduceMotion) {
-        node.x += node.vx;
-        node.y += node.vy;
-      }
-      if (node.x < -16 * ratio) node.x = width + 16 * ratio;
-      if (node.x > width + 16 * ratio) node.x = -16 * ratio;
-      if (node.y < -16 * ratio) node.y = height + 16 * ratio;
-      if (node.y > height + 16 * ratio) node.y = -16 * ratio;
+    for (const block of blocks) {
+      if (!reduceMotion) block.y += block.drift;
+      if (block.y < -12 * ratio) block.y = height + 12 * ratio;
+      if (block.y > height + 12 * ratio) block.y = -12 * ratio;
 
-      const pulse = 0.34 + Math.abs(Math.sin(frame * 0.035 + node.phase)) * 0.52;
-      const x = snap(node.x, 4 * ratio);
-      const y = snap(node.y, 4 * ratio);
-      context.fillStyle = node.blue ? "rgba(86, 216, 255, " + (pulse * 0.52).toFixed(3) + ")" : "rgba(47, 255, 142, " + pulse.toFixed(3) + ")";
-      context.fillRect(x, y, node.size, node.size);
+      const pulse = 0.74 + Math.sin(frame * 0.018 + block.phase) * 0.26;
+      setPixelFill(block.tone, Math.max(0.04, block.alpha * pulse));
+      context.fillRect(snap(block.x, 2 * ratio), snap(block.y, 2 * ratio), block.size, block.size);
     }
 
-    for (let left = 0; left < nodes.length; left += 1) {
-      for (let right = left + 1; right < nodes.length; right += 1) {
-        const a = nodes[left];
-        const b = nodes[right];
-        const dx = a.x - b.x;
-        const dy = a.y - b.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const limit = 104 * ratio;
-        if (distance < limit && Math.abs(dx) + Math.abs(dy) > 18 * ratio) {
-          drawPixelLine(a, b, (1 - distance / limit) * 0.14);
-        }
-      }
+    for (const lane of lanes) {
+      if (!reduceMotion) lane.x += lane.speed;
+      if (lane.x < -180 * ratio) lane.x = width + 120 * ratio;
+      if (lane.x > width + 180 * ratio) lane.x = -120 * ratio;
+
+      const pulse = 0.76 + Math.sin(frame * 0.026 + lane.phase) * 0.24;
+      setPixelFill(lane.tone, Math.max(0.05, lane.alpha * pulse));
+      context.fillRect(snap(lane.x, 2 * ratio), snap(lane.y, 2 * ratio), lane.width, lane.height);
     }
 
     if (!reduceMotion) raf = requestAnimationFrame(draw);
   }
 
+  function onResize() {
+    resize();
+    draw();
+  }
+
   resize();
   draw();
-  window.addEventListener("resize", resize);
+  window.addEventListener("resize", onResize);
   return () => {
     cancelAnimationFrame(raf);
-    window.removeEventListener("resize", resize);
+    window.removeEventListener("resize", onResize);
   };
 }
 

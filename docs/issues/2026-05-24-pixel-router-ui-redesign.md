@@ -2,7 +2,7 @@
 
 ## Status
 
-Resolved for static, route, API, and local runtime checks after fixing the visible pixel-field stacking. Browser screenshot verification remains unavailable in this environment.
+Resolved for static, route, API, and local runtime checks after switching the background to a reference-derived pixel block field. Browser screenshot verification remains unavailable in this environment.
 
 ## Date
 
@@ -10,7 +10,7 @@ Resolved for static, route, API, and local runtime checks after fixing the visib
 
 ## Impact
 
-The portal visual layer is being redesigned toward a denser pixel-router console style: black canvas, dot-field background, pixel typography, stronger route cards, and visible pointer trail effects.
+The portal visual layer is being redesigned toward a denser pixel-router console style: black canvas, reference-derived pixel-block background, pixel typography, stronger route cards, and visible pointer trail effects.
 
 ## Evidence
 
@@ -18,7 +18,7 @@ The previous CSS had several accumulated pixel styling passes. The redesign cons
 
 ## Root Cause
 
-This is planned visual work, not a production incident. After first deployment, the dot-field still did not read clearly because the background layer used negative stacking, which can sit behind the body/html background. The primary risk is UI regression: blank route pages, cached old assets, overflowing text, or background effects covering controls.
+This is planned visual work, not a production incident. After first deployment, the prior background still did not match the reference because the reference uses mostly dark gray square pixel blocks, not a green dot matrix. Local reference image analysis showed dominant gray buckets such as 32/32/32 and 48/48/48, with greenish pixels only around 1.5% of the sampled image. The primary risk is UI regression: blank route pages, cached old assets, overflowing text, or background effects covering controls.
 
 ## Changes Made
 
@@ -26,7 +26,7 @@ This is planned visual work, not a production incident. After first deployment, 
 - Increased canvas mesh density while keeping animation bounded.
 - Updated CSS/JS cache-busting query strings.
 - Updated the public README feature summary to describe the pixel-router visual direction.
-- Added a visible 4router-style pixel-field fix that moves the dot background to a non-negative fixed layer and raises content layers above it.
+- Replaced the green dot-matrix layer with a reference-derived dark gray pixel block field, with sparse green/blue accents and a denser canvas block renderer.
 
 ## Verification
 
@@ -36,9 +36,10 @@ This is planned visual work, not a production incident. After first deployment, 
 - CSS brace/comment balance check passed.
 - `start.sh restart` recreated the local portal container and passed `/api/config` health check.
 - `/`, `/services`, `/monitor`, `/ports`, and `/ops` each returned HTTP 200 and the expected `body data-route` value.
-- Served HTML includes the new `styles.css?v=20260524-1815` and `app.js?v=20260524-1815` assets.
-- Served CSS includes the redesign marker, dot-field background rules, and pixel-font smoothing rules.
-- Served CSS includes the visible pixel-field fix, brighter green dot rule, and non-negative background stacking.
+- Served HTML includes the new `styles.css?v=20260524-1935` and `app.js?v=20260524-1935` assets.
+- Served CSS includes the redesign marker, reference-derived pixel-block background rules, and pixel-font smoothing rules.
+- Served CSS includes the reference-derived pixel block field and the stronger `#mesh` opacity.
+- Served JS includes the denser gray square canvas renderer, horizontal data lanes, and sparse accent blocks.
 - Served JS includes the mesh and pointer trail code.
 - `GET /api/status` returned 6/6 online services.
 - Open Graph metadata still includes title, description, image, URL, type, site name, image dimensions, and image alt text.

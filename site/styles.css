@@ -2582,16 +2582,17 @@ h3 {
   }
 }
 
-/* visible 4router-style pixel field fix */
+/* reference-derived pixel block field */
 body::before {
   z-index: 0;
   opacity: 1;
   background:
-    radial-gradient(circle at 2px 2px, rgba(47, 255, 142, 0.58) 0 1.7px, transparent 1.8px) 0 0 / 24px 24px,
-    radial-gradient(circle at 2px 2px, rgba(47, 255, 142, 0.34) 0 1.4px, transparent 1.5px) 11px 13px / 36px 36px,
-    radial-gradient(circle at 2px 2px, rgba(84, 217, 255, 0.24) 0 1.3px, transparent 1.4px) 7px 5px / 72px 72px,
-    linear-gradient(180deg, rgba(0, 2, 0, 0.18), rgba(0, 2, 0, 0.72)),
-    #000200;
+    linear-gradient(90deg, transparent 0 9px, rgba(48, 48, 48, 0.58) 9px 13px, transparent 13px 100%) 0 0 / 38px 26px,
+    linear-gradient(0deg, transparent 0 15px, rgba(64, 64, 64, 0.38) 15px 19px, transparent 19px 100%) 9px 7px / 52px 34px,
+    linear-gradient(90deg, transparent 0 25px, rgba(96, 96, 96, 0.22) 25px 33px, transparent 33px 100%) 19px 23px / 112px 52px,
+    linear-gradient(0deg, transparent 0 18px, rgba(28, 84, 44, 0.2) 18px 23px, transparent 23px 100%) 0 100% / 42px 64px,
+    radial-gradient(circle at 50% 110%, rgba(47, 255, 142, 0.16), transparent 34rem),
+    #080808;
 }
 
 body::after {
@@ -2605,7 +2606,7 @@ body::after {
 
 #mesh {
   z-index: 2;
-  opacity: 0.34;
+  opacity: 0.86;
 }
 
 #pixel-trail {
@@ -2638,6 +2639,6 @@ body::after {
 .port-row,
 .fact-grid div,
 .monitor-service-row {
-  background-color: rgba(0, 7, 2, 0.76);
+  background-color: rgba(8, 8, 8, 0.72);
   background-blend-mode: screen, normal;
 }
