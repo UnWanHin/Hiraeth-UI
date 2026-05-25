@@ -1971,6 +1971,9 @@ function startMesh() {
 
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const cells = [];
+  const activeCells = [];
+  const staticCanvas = document.createElement("canvas");
+  const staticContext = staticCanvas.getContext("2d");
   let width = 0;
   let height = 0;
   let ratio = 1;
@@ -1985,107 +1988,134 @@ function startMesh() {
     return seed / 4294967296;
   }
 
+  function setPixelFill(target, tone, alpha) {
+    if (tone === "green") target.fillStyle = "rgba(47, 255, 142, " + Math.min(0.72, alpha + 0.08).toFixed(3) + ")";
+    else if (tone === "blue") target.fillStyle = "rgba(84, 217, 255, " + Math.min(0.5, alpha + 0.04).toFixed(3) + ")";
+    else target.fillStyle = "rgba(142, 142, 142, " + alpha.toFixed(3) + ")";
+  }
+
+  function drawCell(target, cell, alpha, tone = cell.tone, x = cell.x, y = cell.y, size = cell.size) {
+    setPixelFill(target, tone, alpha);
+    target.fillRect(Math.round(x), Math.round(y), size, size);
+  }
+
   function resize() {
     ratio = window.devicePixelRatio || 1;
     width = canvas.width = Math.floor(window.innerWidth * ratio);
     height = canvas.height = Math.floor(window.innerHeight * ratio);
+    staticCanvas.width = width;
+    staticCanvas.height = height;
     canvas.style.width = window.innerWidth + "px";
     canvas.style.height = window.innerHeight + "px";
     context.imageSmoothingEnabled = false;
+    if (staticContext) staticContext.imageSmoothingEnabled = false;
     cells.length = 0;
+    activeCells.length = 0;
     seed = 8790;
 
-    const pitch = 13 * ratio;
-    const cols = Math.ceil(width / pitch) + 3;
-    const rows = Math.ceil(height / pitch) + 3;
-    for (let row = -1; row < rows; row += 1) {
-      const rowOffset = (random() - 0.5) * pitch * 1.35;
-      for (let col = -1; col < cols; col += 1) {
-        if (random() < 0.1) continue;
-        const x = col * pitch + rowOffset + (random() - 0.5) * pitch * 1.15;
-        const y = row * pitch + (random() - 0.5) * pitch * 1.05;
-        const xRatio = x / Math.max(1, width);
-        const yRatio = y / Math.max(1, height);
-        const roll = random();
-        const greenBias = yRatio > 0.72 ? 0.05 : yRatio > 0.44 && xRatio > 0.14 && xRatio < 0.86 ? 0.022 : 0.004;
-        const tone = roll < greenBias ? "green" : roll < greenBias + 0.007 ? "blue" : "gray";
-        const sizeRoll = random();
-        cells.push({
-          x,
-          y,
-          size: (sizeRoll < 0.42 ? 3 : sizeRoll < 0.76 ? 4 : sizeRoll < 0.94 ? 6 : 8) * ratio,
-          alpha: tone === "gray" ? 0.07 + random() * 0.22 : 0.16 + random() * 0.3,
-          phase: random() * Math.PI * 2,
-          speed: 0.01 + random() * 0.024,
-          drift: (0.9 + random() * 2.1) * ratio,
-          tone,
-          active: tone !== "gray" || random() < 0.2,
-        });
+    const unit = 4.5 * ratio;
+    const gap = Math.max(1, 0.95 * ratio);
+    const cols = Math.ceil(width / unit) + 2;
+    const rows = Math.ceil(height / unit) + 2;
+    const occupied = new Uint8Array(cols * rows);
+
+    function isFree(col, row, span) {
+      if (col + span > cols || row + span > rows) return false;
+      for (let y = row; y < row + span; y += 1) {
+        for (let x = col; x < col + span; x += 1) {
+          if (occupied[y * cols + x]) return false;
+        }
+      }
+      return true;
+    }
+
+    function occupy(col, row, span) {
+      for (let y = row; y < row + span; y += 1) {
+        for (let x = col; x < col + span; x += 1) occupied[y * cols + x] = 1;
       }
     }
 
-    const clusters = Math.max(18, Math.min(90, Math.floor((window.innerWidth * window.innerHeight) / 18000)));
-    for (let cluster = 0; cluster < clusters; cluster += 1) {
-      const cx = random() * width;
-      const cy = random() * height;
-      const members = 3 + Math.floor(random() * 6);
-      for (let member = 0; member < members; member += 1) {
+    function chooseSpan(col, row) {
+      const roll = random();
+      const candidates = roll < 0.045 ? [3, 2, 1] : roll < 0.34 ? [2, 1] : random() < 0.22 ? [2, 1] : [1];
+      for (const span of candidates) if (isFree(col, row, span)) return span;
+      return 1;
+    }
+
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        if (occupied[row * cols + col]) continue;
+        const span = chooseSpan(col, row);
+        occupy(col, row, span);
+        const slotX = col * unit;
+        const slotY = row * unit;
+        const xRatio = slotX / Math.max(1, width);
+        const yRatio = slotY / Math.max(1, height);
         const toneRoll = random();
-        const tone = toneRoll < 0.18 ? "green" : toneRoll < 0.22 ? "blue" : "gray";
-        cells.push({
-          x: cx + (random() - 0.5) * pitch * 4.2,
-          y: cy + (random() - 0.5) * pitch * 4.2,
-          size: (random() < 0.72 ? 4 : random() < 0.92 ? 6 : 8) * ratio,
-          alpha: tone === "gray" ? 0.12 + random() * 0.24 : 0.22 + random() * 0.34,
+        const greenBias = yRatio > 0.72 ? 0.05 : yRatio > 0.44 && xRatio > 0.14 && xRatio < 0.86 ? 0.022 : 0.004;
+        const tone = toneRoll < greenBias ? "green" : toneRoll < greenBias + 0.007 ? "blue" : "gray";
+        const inset = random() * Math.min(gap, 1.2 * ratio);
+        const size = Math.max(2 * ratio, span * unit - gap - inset);
+        const cell = {
+          x: slotX + inset * 0.5,
+          y: slotY + inset * 0.5,
+          size,
+          alpha: tone === "gray" ? 0.075 + random() * 0.2 : 0.16 + random() * 0.3,
           phase: random() * Math.PI * 2,
-          speed: 0.012 + random() * 0.03,
-          drift: (1.1 + random() * 2.4) * ratio,
+          speed: 0.009 + random() * 0.018,
+          drift: (0.18 + random() * 0.42) * ratio,
           tone,
-          active: true,
-        });
+          active: tone !== "gray" || random() < 0.14,
+        };
+        cells.push(cell);
+        if (cell.active) activeCells.push(cell);
       }
     }
-  }
 
-  function setPixelFill(tone, alpha) {
-    if (tone === "green") context.fillStyle = "rgba(47, 255, 142, " + Math.min(0.72, alpha + 0.08).toFixed(3) + ")";
-    else if (tone === "blue") context.fillStyle = "rgba(84, 217, 255, " + Math.min(0.5, alpha + 0.04).toFixed(3) + ")";
-    else context.fillStyle = "rgba(142, 142, 142, " + alpha.toFixed(3) + ")";
+    if (staticContext) {
+      staticContext.clearRect(0, 0, width, height);
+      for (const cell of cells) drawCell(staticContext, cell, cell.alpha * 0.78);
+    }
   }
 
   function onPointerMove(event) {
     pointerX = event.clientX * ratio;
     pointerY = event.clientY * ratio;
+    if (reduceMotion) draw();
   }
 
   function onPointerLeave() {
     pointerX = -9999;
     pointerY = -9999;
+    if (reduceMotion) draw();
   }
 
   function draw() {
     context.clearRect(0, 0, width, height);
+    if (staticCanvas.width) context.drawImage(staticCanvas, 0, 0);
     frame += reduceMotion ? 0 : 1;
     const hoverRadius = 92 * ratio;
+    const hoverRadiusSq = hoverRadius * hoverRadius;
 
-    for (const cell of cells) {
+    for (const cell of activeCells) {
       const floatX = reduceMotion ? 0 : Math.sin(frame * cell.speed + cell.phase) * cell.drift;
       const floatY = reduceMotion ? 0 : Math.cos(frame * (cell.speed * 0.82) + cell.phase) * cell.drift;
-      const x = Math.round(cell.x + floatX);
-      const y = Math.round(cell.y + floatY);
-      const dx = x - pointerX;
-      const dy = y - pointerY;
+      const pulse = 0.76 + Math.sin(frame * 0.024 + cell.phase) * 0.24;
+      drawCell(context, cell, Math.max(0.04, cell.alpha * pulse), cell.tone, cell.x + floatX, cell.y + floatY);
+    }
+
+    for (const cell of cells) {
+      const centerX = cell.x + cell.size / 2;
+      const centerY = cell.y + cell.size / 2;
+      const dx = centerX - pointerX;
+      const dy = centerY - pointerY;
       const distanceSq = dx * dx + dy * dy;
-      const hover = distanceSq < hoverRadius * hoverRadius ? 1 - Math.sqrt(distanceSq) / hoverRadius : 0;
-      const pulse = cell.active ? 0.76 + Math.sin(frame * 0.025 + cell.phase) * 0.24 : 0.94 + Math.sin(frame * 0.009 + cell.phase) * 0.06;
-      const alpha = Math.max(0.04, cell.alpha * pulse + hover * 0.46);
-      const tone = hover > 0.28 ? "green" : cell.tone;
-      const size = cell.size + (hover > 0.25 ? 1.5 * ratio : 0);
-      setPixelFill(tone, alpha);
-      context.fillRect(x, y, size, size);
-      if (hover > 0.45 || (cell.tone !== "gray" && pulse > 0.92)) {
-        context.fillStyle = "rgba(232, 255, 240, " + Math.min(0.32, alpha * 0.38).toFixed(3) + ")";
-        context.fillRect(x + 2 * ratio, y + 2 * ratio, Math.max(1, 2 * ratio), Math.max(1, 2 * ratio));
+      if (distanceSq >= hoverRadiusSq) continue;
+      const hover = 1 - Math.sqrt(distanceSq) / hoverRadius;
+      drawCell(context, cell, Math.max(0.08, cell.alpha + hover * 0.5), hover > 0.24 ? "green" : cell.tone);
+      if (hover > 0.48) {
+        context.fillStyle = "rgba(232, 255, 240, " + Math.min(0.32, hover * 0.34).toFixed(3) + ")";
+        context.fillRect(cell.x + 2 * ratio, cell.y + 2 * ratio, Math.max(1, 2 * ratio), Math.max(1, 2 * ratio));
       }
     }
 
