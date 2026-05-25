@@ -1861,7 +1861,7 @@ function startPointerEffects() {
 }
 
 function startPixelTrail() {
-  const canvas = elements.pixelTrail;
+  const canvas = $("#pixel-trail");
   if (!canvas) return () => {};
   const context = canvas.getContext("2d");
   if (!context) return () => {};
@@ -1872,7 +1872,7 @@ function startPixelTrail() {
   const particles = [];
   let width = 0;
   let height = 0;
-  let ratio = window.devicePixelRatio || 1;
+  let ratio = 1;
   let raf = 0;
   let lastX = window.innerWidth / 2;
   let lastY = window.innerHeight / 2;
@@ -1886,16 +1886,21 @@ function startPixelTrail() {
     context.imageSmoothingEnabled = false;
   }
 
-  function pushParticle(x, y, size, life, vx, vy, alpha) {
+  function snap(value, grid) {
+    return Math.round(value / grid) * grid;
+  }
+
+  function pushCell(x, y, size, life, alpha, tone = "green") {
+    const grid = 14 * ratio;
     particles.push({
-      x: x * ratio,
-      y: y * ratio,
+      x: snap(x * ratio, grid),
+      y: snap(y * ratio, grid),
       size: size * ratio,
       life,
       maxLife: life,
-      vx: vx * ratio,
-      vy: vy * ratio,
       alpha,
+      tone,
+      phase: Math.random() * Math.PI * 2,
     });
   }
 
@@ -1905,20 +1910,22 @@ function startPixelTrail() {
     const dx = x - lastX;
     const dy = y - lastY;
     const distance = Math.max(1, Math.hypot(dx, dy));
-    const steps = Math.min(14, Math.max(3, Math.floor(distance / 7)));
+    const steps = Math.min(18, Math.max(4, Math.floor(distance / 6)));
 
-    for (let step = 0; step < steps; step += 1) {
+    for (let step = 0; step <= steps; step += 1) {
       const t = step / steps;
       const px = lastX + dx * t;
       const py = lastY + dy * t;
-      const jitterX = (Math.random() - 0.5) * 10;
-      const jitterY = (Math.random() - 0.5) * 10;
-      const size = 4 + Math.floor(Math.random() * 3);
-      pushParticle(px + jitterX, py + jitterY, size, 30 + Math.random() * 24, (Math.random() - 0.5) * 0.28, (Math.random() - 0.5) * 0.28, 0.82 + Math.random() * 0.18);
+      const spread = step % 3 === 0 ? 14 : 0;
+      pushCell(px, py, 6, 30 + Math.random() * 18, 0.72 + Math.random() * 0.24, "green");
+      if (spread) {
+        pushCell(px + spread, py, 4, 22 + Math.random() * 12, 0.34 + Math.random() * 0.2, "green");
+        pushCell(px, py + spread, 4, 22 + Math.random() * 12, 0.24 + Math.random() * 0.18, Math.random() < 0.25 ? "blue" : "green");
+      }
     }
 
-    pushParticle(x, y, 9, 24, 0, 0, 1);
-    if (particles.length > 560) particles.splice(0, particles.length - 560);
+    pushCell(x, y, 8, 26, 1, "white");
+    if (particles.length > 860) particles.splice(0, particles.length - 860);
     lastX = x;
     lastY = y;
   }
@@ -1928,26 +1935,21 @@ function startPixelTrail() {
     for (let index = particles.length - 1; index >= 0; index -= 1) {
       const particle = particles[index];
       particle.life -= 1;
-      particle.x += particle.vx;
-      particle.y += particle.vy;
       if (particle.life <= 0) {
         particles.splice(index, 1);
         continue;
       }
 
       const pct = particle.life / particle.maxLife;
-      const alpha = particle.alpha * pct;
-      const snappedX = Math.round(particle.x / (4 * ratio)) * (4 * ratio);
-      const snappedY = Math.round(particle.y / (4 * ratio)) * (4 * ratio);
-      context.fillStyle = "rgba(47, 255, 142, " + alpha.toFixed(3) + ")";
-      context.fillRect(snappedX, snappedY, particle.size, particle.size);
-      if (pct > 0.34) {
-        context.fillStyle = "rgba(209, 255, 229, " + (alpha * 0.42).toFixed(3) + ")";
-        context.fillRect(snappedX, snappedY, Math.max(1, particle.size / 2), Math.max(1, particle.size / 2));
-      }
-      if (pct > 0.72) {
-        context.fillStyle = "rgba(86, 216, 255, " + (alpha * 0.22).toFixed(3) + ")";
-        context.fillRect(snappedX + 2 * ratio, snappedY + 2 * ratio, Math.max(1, particle.size / 3), Math.max(1, particle.size / 3));
+      const pulse = 0.82 + Math.sin(particle.life * 0.42 + particle.phase) * 0.18;
+      const alpha = particle.alpha * pct * pulse;
+      if (particle.tone === "white") context.fillStyle = "rgba(232, 255, 240, " + Math.min(0.95, alpha).toFixed(3) + ")";
+      else if (particle.tone === "blue") context.fillStyle = "rgba(84, 217, 255, " + Math.min(0.52, alpha).toFixed(3) + ")";
+      else context.fillStyle = "rgba(47, 255, 142, " + Math.min(0.92, alpha).toFixed(3) + ")";
+      context.fillRect(particle.x, particle.y, particle.size, particle.size);
+      if (pct > 0.38) {
+        context.fillStyle = "rgba(232, 255, 240, " + Math.min(0.3, alpha * 0.34).toFixed(3) + ")";
+        context.fillRect(particle.x + 2 * ratio, particle.y + 2 * ratio, Math.max(1, 2 * ratio), Math.max(1, 2 * ratio));
       }
     }
     raf = requestAnimationFrame(draw);
@@ -1979,6 +1981,8 @@ function startMesh() {
   let raf = 0;
   let frame = 0;
   let seed = 8790;
+  let pointerX = -9999;
+  let pointerY = -9999;
 
   function random() {
     seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -1987,19 +1991,6 @@ function startMesh() {
 
   function snap(value, grid) {
     return Math.round(value / grid) * grid;
-  }
-
-  function addCell(x, y, options = {}) {
-    const grid = options.grid || 10 * ratio;
-    cells.push({
-      x: snap(x, grid),
-      y: snap(y, grid),
-      size: options.size || (random() < 0.72 ? 4 : 6) * ratio,
-      alpha: options.alpha || 0.08 + random() * 0.3,
-      phase: random() * Math.PI * 2,
-      tone: options.tone || "gray",
-      active: options.active || random() < 0.34,
-    });
   }
 
   function resize() {
@@ -2012,67 +2003,73 @@ function startMesh() {
     cells.length = 0;
     seed = 8790;
 
-    const grid = 10 * ratio;
-    const count = Math.max(620, Math.min(2400, Math.floor((window.innerWidth * window.innerHeight) / 620)));
-    for (let index = 0; index < count; index += 1) {
-      const x = random() * width;
-      const y = random() * height;
-      const yRatio = y / Math.max(1, height);
-      const xRatio = x / Math.max(1, width);
-      const roll = random();
-      const greenBias = yRatio > 0.76 ? 0.07 : yRatio > 0.48 && xRatio > 0.18 && xRatio < 0.82 ? 0.032 : 0.005;
-      const tone = roll < greenBias ? "green" : roll < greenBias + 0.012 ? "blue" : "gray";
-      const sizeRoll = random();
-      addCell(x, y, {
-        grid,
-        tone,
-        size: (sizeRoll < 0.64 ? 3 : sizeRoll < 0.92 ? 5 : 7) * ratio,
-        alpha: tone === "gray" ? 0.06 + random() * 0.24 : 0.12 + random() * 0.34,
-      });
-    }
-
-    const bands = [0.06, 0.13, 0.47, 0.54, 0.61, 0.76, 0.9];
-    for (const band of bands) {
-      const y = snap(height * band + (random() - 0.5) * 14 * ratio, grid);
-      const middleBand = band > 0.44 && band < 0.64;
-      const greenChance = band > 0.84 ? 0.2 : middleBand ? 0.1 : 0.018;
-      for (let x = random() * grid; x < width + grid;) {
-        const run = 1 + Math.floor(random() * (middleBand ? 6 : 4));
-        for (let step = 0; step < run; step += 1) {
-          if (random() < 0.22) continue;
-          const toneRoll = random();
-          const tone = toneRoll < greenChance ? "green" : toneRoll < greenChance + 0.014 ? "blue" : "gray";
-          addCell(x + step * grid, y + snap((random() - 0.5) * 2 * grid, grid), {
-            grid,
-            tone,
-            size: (tone === "gray" ? 5 : 6) * ratio,
-            alpha: tone === "gray" ? 0.16 + random() * 0.28 : 0.2 + random() * 0.36,
-            active: true,
-          });
-        }
-        x += (run + 1 + Math.floor(random() * 4)) * grid;
+    const pitch = 14 * ratio;
+    const cols = Math.ceil(width / pitch) + 2;
+    const rows = Math.ceil(height / pitch) + 2;
+    for (let row = -1; row < rows; row += 1) {
+      for (let col = -1; col < cols; col += 1) {
+        const x = col * pitch;
+        const y = row * pitch;
+        const xRatio = x / Math.max(1, width);
+        const yRatio = y / Math.max(1, height);
+        const roll = random();
+        const greenBias = yRatio > 0.72 ? 0.055 : yRatio > 0.44 && xRatio > 0.14 && xRatio < 0.86 ? 0.024 : 0.004;
+        const tone = roll < greenBias ? "green" : roll < greenBias + 0.008 ? "blue" : "gray";
+        const sizeRoll = random();
+        cells.push({
+          x,
+          y,
+          size: (sizeRoll < 0.72 ? 4 : sizeRoll < 0.96 ? 5 : 7) * ratio,
+          alpha: tone === "gray" ? 0.08 + random() * 0.2 : 0.18 + random() * 0.28,
+          phase: random() * Math.PI * 2,
+          speed: 0.012 + random() * 0.018,
+          drift: (0.55 + random() * 1.25) * ratio,
+          tone,
+          active: tone !== "gray" || random() < 0.16,
+        });
       }
     }
   }
 
   function setPixelFill(tone, alpha) {
-    if (tone === "green") context.fillStyle = "rgba(47, 255, 142, " + Math.min(0.6, alpha + 0.08).toFixed(3) + ")";
-    else if (tone === "blue") context.fillStyle = "rgba(84, 217, 255, " + Math.min(0.48, alpha + 0.04).toFixed(3) + ")";
-    else context.fillStyle = "rgba(150, 150, 150, " + alpha.toFixed(3) + ")";
+    if (tone === "green") context.fillStyle = "rgba(47, 255, 142, " + Math.min(0.72, alpha + 0.08).toFixed(3) + ")";
+    else if (tone === "blue") context.fillStyle = "rgba(84, 217, 255, " + Math.min(0.5, alpha + 0.04).toFixed(3) + ")";
+    else context.fillStyle = "rgba(142, 142, 142, " + alpha.toFixed(3) + ")";
+  }
+
+  function onPointerMove(event) {
+    pointerX = event.clientX * ratio;
+    pointerY = event.clientY * ratio;
+  }
+
+  function onPointerLeave() {
+    pointerX = -9999;
+    pointerY = -9999;
   }
 
   function draw() {
     context.clearRect(0, 0, width, height);
     frame += reduceMotion ? 0 : 1;
+    const hoverRadius = 92 * ratio;
 
     for (const cell of cells) {
-      const pulse = cell.active ? 0.76 + Math.sin(frame * 0.022 + cell.phase) * 0.24 : 1;
-      const jitter = !reduceMotion && cell.active ? Math.round(Math.sin(frame * 0.012 + cell.phase) * 0.5) * 2 * ratio : 0;
-      setPixelFill(cell.tone, Math.max(0.035, cell.alpha * pulse));
-      context.fillRect(snap(cell.x + jitter, 2 * ratio), snap(cell.y, 2 * ratio), cell.size, cell.size);
-      if (cell.tone !== "gray" && pulse > 0.88) {
-        context.fillStyle = "rgba(232, 255, 240, " + Math.min(0.24, cell.alpha * 0.4).toFixed(3) + ")";
-        context.fillRect(snap(cell.x + jitter + 2 * ratio, 2 * ratio), snap(cell.y + 2 * ratio, 2 * ratio), Math.max(1, 2 * ratio), Math.max(1, 2 * ratio));
+      const floatX = reduceMotion ? 0 : Math.sin(frame * cell.speed + cell.phase) * cell.drift;
+      const floatY = reduceMotion ? 0 : Math.cos(frame * (cell.speed * 0.82) + cell.phase) * cell.drift;
+      const x = snap(cell.x + floatX, ratio);
+      const y = snap(cell.y + floatY, ratio);
+      const dx = x - pointerX;
+      const dy = y - pointerY;
+      const distanceSq = dx * dx + dy * dy;
+      const hover = distanceSq < hoverRadius * hoverRadius ? 1 - Math.sqrt(distanceSq) / hoverRadius : 0;
+      const pulse = cell.active ? 0.76 + Math.sin(frame * 0.025 + cell.phase) * 0.24 : 0.94 + Math.sin(frame * 0.009 + cell.phase) * 0.06;
+      const alpha = Math.max(0.04, cell.alpha * pulse + hover * 0.46);
+      const tone = hover > 0.28 ? "green" : cell.tone;
+      const size = cell.size + (hover > 0.25 ? 1.5 * ratio : 0);
+      setPixelFill(tone, alpha);
+      context.fillRect(x, y, size, size);
+      if (hover > 0.45 || (cell.tone !== "gray" && pulse > 0.92)) {
+        context.fillStyle = "rgba(232, 255, 240, " + Math.min(0.32, alpha * 0.38).toFixed(3) + ")";
+        context.fillRect(x + 2 * ratio, y + 2 * ratio, Math.max(1, 2 * ratio), Math.max(1, 2 * ratio));
       }
     }
 
@@ -2087,9 +2084,13 @@ function startMesh() {
   resize();
   draw();
   window.addEventListener("resize", onResize);
+  window.addEventListener("pointermove", onPointerMove, { passive: true });
+  window.addEventListener("pointerleave", onPointerLeave);
   return () => {
     cancelAnimationFrame(raf);
     window.removeEventListener("resize", onResize);
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerleave", onPointerLeave);
   };
 }
 
