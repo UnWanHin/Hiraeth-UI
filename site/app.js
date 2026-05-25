@@ -1978,8 +1978,8 @@ function startMesh() {
   let height = 0;
   let ratio = 1;
   let raf = 0;
-  let frame = 0;
   let lastPaint = 0;
+  let startTime = 0;
   let seed = 8790;
   let pointerX = -9999;
   let pointerY = -9999;
@@ -2063,11 +2063,12 @@ function startMesh() {
           size,
           alpha: tone === "gray" ? 0.075 + random() * 0.2 : 0.16 + random() * 0.3,
           phase: random() * Math.PI * 2,
-          speed: 0.0025 + random() * 0.0055,
-          drift: (0.12 + random() * 0.32) * ratio,
-          flow: 0.45 + random() * 0.55,
+          speed: 0.22 + random() * 0.32,
+          drift: (1.8 + random() * 2.4) * ratio,
+          flow: 0.82 + random() * 0.42,
+          lane: random() * Math.PI * 2,
           tone,
-          active: tone !== "gray" || random() < 0.34,
+          active: true,
         };
         cells.push(cell);
         if (cell.active) activeCells.push(cell);
@@ -2076,7 +2077,7 @@ function startMesh() {
 
     if (staticContext) {
       staticContext.clearRect(0, 0, width, height);
-      for (const cell of cells) drawCell(staticContext, cell, cell.alpha * 0.72);
+      for (const cell of cells) drawCell(staticContext, cell, cell.alpha * 0.16);
     }
   }
 
@@ -2093,28 +2094,33 @@ function startMesh() {
   }
 
   function draw(timestamp = 0) {
-    if (!reduceMotion && timestamp && timestamp - lastPaint < 42) {
+    if (!reduceMotion && timestamp && timestamp - lastPaint < 24) {
       raf = requestAnimationFrame(draw);
       return;
     }
     if (timestamp) lastPaint = timestamp;
+    const now = timestamp || performance.now();
+    if (!startTime) startTime = now;
+    const time = reduceMotion ? 0 : (now - startTime) / 1000;
     context.clearRect(0, 0, width, height);
-    frame += reduceMotion ? 0 : 1;
     if (staticCanvas.width) {
-      context.globalAlpha = reduceMotion ? 1 : 0.94 + Math.sin(frame * 0.0032) * 0.035;
+      context.globalAlpha = reduceMotion ? 1 : 0.38 + Math.sin(time * 0.28) * 0.04;
       context.drawImage(staticCanvas, 0, 0);
       context.globalAlpha = 1;
     }
     const hoverRadius = 92 * ratio;
     const hoverRadiusSq = hoverRadius * hoverRadius;
+    const globalFlowX = reduceMotion ? 0 : Math.sin(time * 0.2) * 2.2 * ratio;
+    const globalFlowY = reduceMotion ? 0 : Math.cos(time * 0.16) * 1.6 * ratio;
 
     for (const cell of activeCells) {
-      const waveX = Math.sin(frame * cell.speed + cell.phase + cell.y * 0.0017);
-      const waveY = Math.cos(frame * (cell.speed * 0.86) + cell.phase + cell.x * 0.0013);
-      const floatX = reduceMotion ? 0 : waveX * cell.drift;
-      const floatY = reduceMotion ? 0 : waveY * cell.drift * 0.72;
-      const pulse = 0.74 + Math.sin(frame * 0.006 + cell.phase + cell.x * 0.0009) * 0.16 + waveY * 0.08;
-      drawCell(context, cell, Math.max(0.035, cell.alpha * pulse * cell.flow), cell.tone, cell.x + floatX, cell.y + floatY);
+      const waveX = Math.sin(time * cell.speed + cell.phase + cell.y * 0.0032);
+      const waveY = Math.cos(time * (cell.speed * 0.78) + cell.lane + cell.x * 0.0024);
+      const stream = Math.sin(time * 0.9 + cell.lane + (cell.x + cell.y) * 0.0038);
+      const floatX = reduceMotion ? 0 : globalFlowX + waveX * cell.drift + stream * 0.7 * ratio;
+      const floatY = reduceMotion ? 0 : globalFlowY + waveY * cell.drift * 0.72 + stream * 0.42 * ratio;
+      const pulse = 0.76 + Math.sin(time * 1.05 + cell.phase + cell.x * 0.0011) * 0.18 + waveY * 0.09;
+      drawCell(context, cell, Math.max(0.04, cell.alpha * pulse * cell.flow), cell.tone, cell.x + floatX, cell.y + floatY);
     }
 
     if (pointerX > -1000) {

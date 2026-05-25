@@ -36,7 +36,7 @@ This is planned visual work, not a production incident. After first deployment, 
 - CSS brace/comment balance check passed.
 - `start.sh restart` recreated the local portal container and passed `/api/config` health check.
 - `/`, `/services`, `/monitor`, `/ports`, and `/ops` each returned HTTP 200 and the expected `body data-route` value.
-- Served HTML includes the new `styles.css?v=20260525-0648` and `app.js?v=20260525-0648` assets.
+- Served HTML includes the new `styles.css?v=20260525-0715` and `app.js?v=20260525-0715` assets.
 - Served CSS includes the redesign marker, dynamic square-cell matrix layer, and pixel-font smoothing rules.
 - Served CSS includes the dynamic square-cell matrix marker and the stronger `#mesh` opacity.
 - Served JS includes the irregular square-cell field, pointer-proximity brightening, varied cell sizing, random clusters, and a less grid-locked cursor trail.
@@ -76,3 +76,11 @@ User feedback: the packed variable-cell mosaic is the right form, but the backgr
 ## 2026-05-25 cursor trail regression
 
 User feedback: after adding slow packed mosaic flow, the cursor trail disappeared. Root cause: the frame throttle was accidentally applied to the cursor trail draw loop, where `lastPaint` was not declared, causing the trail animation frame to fail. The throttle was moved to the background mesh draw loop and the cursor trail loop was restored. Verified with syntax checks, served asset checks, route checks for `/`, `/services`, `/monitor`, `/ports`, and `/ops`, a served JS check confirming `lastPaint` is no longer inside `startPixelTrail()`, and `/api/status` returning 6/6 online services.
+
+## 2026-05-25 visible mosaic flow correction
+
+User feedback: the background cells still appeared static. Root cause: the slow-flow drift was below one CSS pixel for many cells and was rounded away, while the fixed base layer was visually dominant. The active overlay now uses visible 1-2px coherent drift, stronger brightness breathing, and a softer static base so the packed mosaic visibly flows without changing its overall structure. Verified with syntax checks, served asset checks, route checks for `/`, `/services`, `/monitor`, `/ports`, and `/ops`, served JS checks for visible drift and restored cursor trail separation, and `/api/status` returning 6/6 online services.
+
+## 2026-05-25 full-field flow correction
+
+User feedback: the background grid still did not visibly move. Root cause: even after increasing drift, only part of the mosaic carried the motion layer and the fixed base still read as the dominant visual. The background renderer now keeps the packed, non-overlapping base geometry but draws the full mosaic through a time-based flow field, with a very faint static base, coherent global drift, per-cell wave offsets, and stronger brightness breathing. This should make the background visibly but slowly flow while preserving the same overall packed-square structure. Verified with syntax checks, diff checks, sensitive-diff scan, served asset checks, route checks for `/`, `/services`, `/monitor`, `/ports`, and `/ops`, served JS checks for full-field time-based flow and restored cursor trail separation, and `/api/status` returning 6/6 online services. Browser screenshot verification remains unavailable in this environment.
