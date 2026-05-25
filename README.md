@@ -7,7 +7,8 @@ The default deployment binds to `127.0.0.1:8790`, so it is intended to sit behin
 ## Features
 
 - Path-based portal pages: `/`, `/services`, `/monitor`, `/ports`, `/ops`
-- Config-driven service launcher, route categories, health checks, ticker text, and ops links
+- Config-driven service launcher, route categories, module slots, health checks, ticker text, and ops links
+- Service search and filters powered by service `category`, `module`, and `tags` metadata
 - Live monitor API for CPU, memory, disk, uptime, process count, and TCP service health
 - Optional YABS benchmark import for network speed, disk IO, and Geekbench snapshots
 - Browser-side Oracle region latency probe
@@ -109,7 +110,7 @@ Private local override:
 config/portal.local.json
 ```
 
-Edit `config/portal.local.json` to add your own domain, services, health checks, port labels, and ops links. Do not commit private hostnames, service names, tokens, API keys, or personal images.
+Edit `config/portal.local.json` to add your own domain, services, module groups, health checks, port labels, and ops links. Most future portal expansion should be handled there by adding a service and assigning `category`, `module`, and `tags`. Do not commit private hostnames, service names, tokens, API keys, or personal images.
 
 More config examples are in [docs/configuration.md](docs/configuration.md).
 
@@ -148,7 +149,7 @@ Benchmark JSON, scheduler state, raw logs, and lock files are ignored by git.
 - `site/index.html` static shell and default SEO metadata
 - `site/app.js` UI rendering, route switching, status polling, and canvas effects
 - `site/styles.css` visual design
-- `config/portal.example.json` public template config
+- `config/portal.example.json` public template config, including module and service metadata examples
 - `.env.example` Docker Compose defaults
 - `start.sh` one-command deploy helper
 - `scripts/run-benchmark.sh` YABS import wrapper

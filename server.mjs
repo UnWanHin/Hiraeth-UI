@@ -37,8 +37,13 @@ const defaultConfig = {
     { id: "ops", code: "OPS", name: "Ops", description: "Operations links and documentation.", href: "/ops", accent: "red" },
   ],
   services: [
-    { id: "portal", code: "PORTAL", name: "Hiraeth", description: "Primary control surface and service launcher.", href: "/", port: 8790, scope: "public", accent: "white" },
-    { id: "monitor", code: "MON", name: "Server Monitor", description: "Live CPU, RAM, disk, uptime, and port health.", href: "/monitor", port: 8790, scope: "public", accent: "blue" },
+    { id: "portal", code: "PORTAL", name: "Hiraeth", description: "Primary control surface and service launcher.", href: "/", port: 8790, scope: "public", accent: "white", category: "Core", module: "control", tags: ["portal", "router"] },
+    { id: "monitor", code: "MON", name: "Server Monitor", description: "Live CPU, RAM, disk, uptime, and port health.", href: "/monitor", port: 8790, scope: "public", accent: "blue", category: "Observability", module: "monitoring", tags: ["health", "metrics"] },
+  ],
+  modules: [
+    { id: "control", code: "CTRL", name: "Control", description: "Primary console, route launcher, and protected entry points.", href: "/services?module=control", accent: "green", status: "ready" },
+    { id: "monitoring", code: "MON", name: "Monitoring", description: "Host metrics, port health, benchmark imports, and latency probes.", href: "/services?module=monitoring", accent: "blue", status: "ready" },
+    { id: "integrations", code: "EXT", name: "Integrations", description: "Reserved surface for future apps, APIs, agents, and external dashboards.", href: "/services?module=integrations", accent: "yellow", status: "slot" },
   ],
   healthChecks: [
     { id: "portal", name: "Hiraeth", host: "127.0.0.1", port: 8790 },
@@ -53,6 +58,30 @@ const defaultConfig = {
   ],
   ticker: ["HIRAETH://ROUTE MATRIX ONLINE", "ACCESS:GATE_ENABLED", "TUNNEL:LOCALHOST:8790", "MONITOR:/monitor", "SERVICES:/services", "PORTS:/ports", "OPS:/ops", "PIXEL TRAIL:ARMED"],
   opsLinks: [],
+};
+
+const neutralServiceFallback = {
+  id: "service",
+  code: "SVC",
+  name: "Service",
+  description: "Configured service endpoint.",
+  href: "#",
+  port: null,
+  scope: "local",
+  accent: "green",
+  category: "Services",
+  module: "integrations",
+  tags: [],
+};
+
+const neutralModuleFallback = {
+  id: "module",
+  code: "MOD",
+  name: "Module",
+  description: "Reserved module surface.",
+  href: "/services",
+  accent: "green",
+  status: "slot",
 };
 
 const defaultBenchmarkAutomation = {
@@ -251,6 +280,11 @@ function cleanRoute(value, fallback) {
   };
 }
 
+function cleanList(value, fallback = [], maxItems = 12, maxLength = 32) {
+  const input = Array.isArray(value) ? value : fallback;
+  return input.slice(0, maxItems).map((item) => cleanText(item, "", maxLength)).filter(Boolean);
+}
+
 function cleanService(value, fallback) {
   const service = isRecord(value) ? value : {};
   return {
@@ -262,6 +296,22 @@ function cleanService(value, fallback) {
     port: cleanPort(service.port),
     scope: cleanText(service.scope, fallback.scope || "local", 32),
     accent: cleanAccent(service.accent, fallback.accent || "green"),
+    category: cleanText(service.category, fallback.category || "Services", 48),
+    module: cleanText(service.module, fallback.module || "services", 48),
+    tags: cleanList(service.tags, fallback.tags || [], 8, 28),
+  };
+}
+
+function cleanModule(value, fallback) {
+  const module = isRecord(value) ? value : {};
+  return {
+    id: cleanId(module.id, fallback.id || "module"),
+    code: cleanText(module.code, fallback.code || "MOD", 12),
+    name: cleanText(module.name, fallback.name || "Module", 80),
+    description: cleanText(module.description, fallback.description || "Reserved module surface.", 180),
+    href: cleanHref(module.href, fallback.href || "/services"),
+    accent: cleanAccent(module.accent, fallback.accent || "green"),
+    status: cleanText(module.status, fallback.status || "slot", 32),
   };
 }
 
@@ -302,11 +352,14 @@ function normalizeConfig(input) {
     ? config.routes.map((route, index) => cleanRoute(route, defaultConfig.routes[index] || defaultConfig.routes[0]))
     : defaultConfig.routes;
   const services = Array.isArray(config.services) && config.services.length
-    ? config.services.map((service, index) => cleanService(service, defaultConfig.services[index] || defaultConfig.services[0]))
+    ? config.services.map((service, index) => cleanService(service, defaultConfig.services[index] || neutralServiceFallback))
     : defaultConfig.services;
   const healthChecks = Array.isArray(config.healthChecks) && config.healthChecks.length
     ? config.healthChecks.map((check, index) => cleanHealthCheck(check, defaultConfig.healthChecks[index] || defaultConfig.healthChecks[0])).filter(Boolean)
     : defaultConfig.healthChecks;
+  const modules = Array.isArray(config.modules) && config.modules.length
+    ? config.modules.map((module, index) => cleanModule(module, defaultConfig.modules[index] || neutralModuleFallback))
+    : defaultConfig.modules;
   const portNames = isRecord(config.portNames) ? Object.fromEntries(
     Object.entries(config.portNames)
       .map(([key, value]) => [String(cleanPort(key)), cleanText(value, "Service", 80)])
@@ -326,6 +379,7 @@ function normalizeConfig(input) {
     brand: cleanBrand(config.brand),
     routes,
     services,
+    modules,
     healthChecks,
     portNames,
     watchdog: cleanWatchdogConfig(config.watchdog),
@@ -502,6 +556,7 @@ function publicConfig() {
     brand: portalConfig.brand,
     routes: portalConfig.routes,
     services: portalConfig.services,
+    modules: portalConfig.modules,
     portNames: portalConfig.portNames,
     heroTerminal: portalConfig.heroTerminal,
     ticker: portalConfig.ticker,

@@ -59,6 +59,24 @@ Built-in page paths are:
 /ops
 ```
 
+## Modules
+
+Modules define the home-page expansion slots and the high-level service filters on `/services`:
+
+```json
+{
+  "id": "api",
+  "code": "API",
+  "name": "API",
+  "description": "API gateways, model routing, keys, and usage surfaces.",
+  "href": "/services?module=api",
+  "accent": "blue",
+  "status": "ready"
+}
+```
+
+Use stable lowercase `id` values. Services link to module cards by setting their `module` field to the module `id`. A module `href` can point at `/services?module=<id>` to open a pre-filtered service view.
+
 ## Services
 
 Services are launcher cards:
@@ -72,11 +90,22 @@ Services are launcher cards:
   "href": "https://api.example.com",
   "port": 4000,
   "scope": "protected",
-  "accent": "green"
+  "accent": "green",
+  "category": "API",
+  "module": "api",
+  "tags": ["gateway", "models"]
 }
 ```
 
 Use full HTTPS URLs for independent tools on separate hostnames. Use internal paths only for pages served by Hiraeth UI itself.
+
+Service metadata drives the portal UI:
+
+- `category` creates category chips on `/services`.
+- `module` attaches a service to a module card and enables `/services?module=<id>`.
+- `tags` are shown on service cards and included in search.
+
+If a service omits these fields, Hiraeth falls back to a neutral `Services` category and the `integrations` module instead of leaking a previous service's metadata.
 
 ## Health Checks
 

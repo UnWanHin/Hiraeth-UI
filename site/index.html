@@ -24,7 +24,7 @@
     <meta name="twitter:description" content="Protected route console for services, monitoring, ports, and operator tools." />
     <meta name="twitter:image" content="https://portal.example.com/og.svg" />
     <title>Hiraeth</title>
-    <link rel="stylesheet" href="/styles.css?v=20260525-0738" />
+    <link rel="stylesheet" href="/styles.css?v=20260525-0915" />
   </head>
   <body>
     <div class="cursor-glow" id="cursor-glow" aria-hidden="true"></div>
@@ -103,6 +103,17 @@
 
           <div class="route-grid" id="route-grid" aria-label="Route categories" data-i18n-aria-label="aria.routeCategories"></div>
 
+          <section class="module-console" aria-labelledby="module-title">
+            <div class="section-head compact action-head">
+              <div>
+                <p class="eyebrow" data-i18n="modules.eyebrow">module slots</p>
+                <h2 id="module-title" data-i18n="modules.title">Control Modules</h2>
+              </div>
+              <span class="section-meta" id="module-meta">config ready</span>
+            </div>
+            <div class="module-grid" id="module-grid"></div>
+          </section>
+
           <div class="route-wave" aria-hidden="true"><span></span><span></span><span></span></div>
 
           <section class="home-strip" aria-label="Runtime highlights" data-i18n-aria-label="aria.runtimeHighlights">
@@ -133,6 +144,13 @@
               <p class="lead" data-i18n="services.lead">Open local tools and external consoles from one classified service surface.</p>
             </div>
             <span class="section-meta" id="services-meta">sync pending</span>
+          </div>
+          <div class="service-toolbar" aria-label="Service filters" data-i18n-aria-label="aria.serviceFilters">
+            <label class="service-search" for="service-search">
+              <span>/</span>
+              <input id="service-search" type="search" autocomplete="off" spellcheck="false" placeholder="Search services, ports, tags" data-i18n-placeholder="services.searchPlaceholder" />
+            </label>
+            <div class="service-filters" id="service-filters" role="list"></div>
           </div>
           <div class="service-grid" id="service-grid"></div>
           <div class="service-detail" id="service-detail" aria-live="polite"></div>
@@ -369,6 +387,6 @@
       </section>
     </div>
 
-    <script type="module" src="/app.js?v=20260525-0738"></script>
+    <script type="module" src="/app.js?v=20260525-0915"></script>
   </body>
 </html>

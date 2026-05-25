@@ -64,7 +64,13 @@
       "href": "/",
       "port": 8790,
       "scope": "public",
-      "accent": "white"
+      "accent": "white",
+      "category": "Core",
+      "module": "control",
+      "tags": [
+        "portal",
+        "router"
+      ]
     },
     {
       "id": "monitor",
@@ -74,7 +80,13 @@
       "href": "/monitor",
       "port": 8790,
       "scope": "public",
-      "accent": "blue"
+      "accent": "blue",
+      "category": "Observability",
+      "module": "monitoring",
+      "tags": [
+        "health",
+        "metrics"
+      ]
     },
     {
       "id": "docs",
@@ -84,7 +96,13 @@
       "href": "https://github.com/your-org/Hiraeth-UI",
       "port": null,
       "scope": "external",
-      "accent": "green"
+      "accent": "green",
+      "category": "Knowledge",
+      "module": "integrations",
+      "tags": [
+        "docs",
+        "github"
+      ]
     }
   ],
   "healthChecks": [
@@ -165,5 +183,34 @@
     "intervalSeconds": 30,
     "failureThreshold": 3,
     "cooldownSeconds": 180
-  }
+  },
+  "modules": [
+    {
+      "id": "control",
+      "code": "CTRL",
+      "name": "Control",
+      "description": "Primary console, route launcher, and protected entry points.",
+      "href": "/services?module=control",
+      "accent": "green",
+      "status": "ready"
+    },
+    {
+      "id": "monitoring",
+      "code": "MON",
+      "name": "Monitoring",
+      "description": "Host metrics, port health, benchmark imports, and latency probes.",
+      "href": "/services?module=monitoring",
+      "accent": "blue",
+      "status": "ready"
+    },
+    {
+      "id": "integrations",
+      "code": "EXT",
+      "name": "Integrations",
+      "description": "Reserved surface for future apps, APIs, agents, and external dashboards.",
+      "href": "/services?module=integrations",
+      "accent": "yellow",
+      "status": "slot"
+    }
+  ]
 }

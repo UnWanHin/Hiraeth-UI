@@ -7,8 +7,14 @@ let routePages = [
 ];
 
 let services = [
-  { id: "portal", code: "PORTAL", name: "Hiraeth", description: "Primary control surface and service launcher.", href: "/", port: 8790, scope: "public", accent: "white" },
-  { id: "monitor", code: "MON", name: "Server Monitor", description: "Live CPU, RAM, disk, uptime, and port health.", href: "/monitor", port: 8790, scope: "public", accent: "blue" },
+  { id: "portal", code: "PORTAL", name: "Hiraeth", description: "Primary control surface and service launcher.", href: "/", port: 8790, scope: "public", accent: "white", category: "Core", module: "control", tags: ["portal", "router"] },
+  { id: "monitor", code: "MON", name: "Server Monitor", description: "Live CPU, RAM, disk, uptime, and port health.", href: "/monitor", port: 8790, scope: "public", accent: "blue", category: "Observability", module: "monitoring", tags: ["health", "metrics"] },
+];
+
+let modules = [
+  { id: "control", code: "CTRL", name: "Control", description: "Primary console, route launcher, and protected entry points.", href: "/services?module=control", accent: "green", status: "ready" },
+  { id: "monitoring", code: "MON", name: "Monitoring", description: "Host metrics, port health, benchmark imports, and latency probes.", href: "/services?module=monitoring", accent: "blue", status: "ready" },
+  { id: "integrations", code: "EXT", name: "Integrations", description: "Reserved surface for future apps, APIs, agents, and external dashboards.", href: "/services?module=integrations", accent: "yellow", status: "slot" },
 ];
 
 let portNames = {
@@ -595,6 +601,19 @@ Object.assign(messages.en.health, {
   restartFailed: "restart failed",
 });
 
+Object.assign(messages["zh-Hant"].aria, { serviceFilters: "服務篩選" });
+Object.assign(messages["zh-Hans"].aria, { serviceFilters: "服务筛选" });
+Object.assign(messages.en.aria, { serviceFilters: "Service filters" });
+Object.assign(messages["zh-Hant"], { modules: { eyebrow: "模組接口", title: "控制模組", meta: "{count} 個模組 · {services} 項服務", services: "{count} 項服務", ready: "ready", slot: "slot" } });
+Object.assign(messages["zh-Hans"], { modules: { eyebrow: "模块接口", title: "控制模块", meta: "{count} 个模块 · {services} 项服务", services: "{count} 项服务", ready: "ready", slot: "slot" } });
+Object.assign(messages.en, { modules: { eyebrow: "module slots", title: "Control Modules", meta: "{count} modules · {services} services", services: "{count} services", ready: "ready", slot: "slot" } });
+Object.assign(messages["zh-Hant"].services, { searchPlaceholder: "搜尋服務、端口、標籤", filterAll: "全部", filterModules: "模組", filterCategories: "分類", count: "{count}/{total} 項服務", empty: "沒有符合條件的服務", uncategorized: "未分類" });
+Object.assign(messages["zh-Hans"].services, { searchPlaceholder: "搜索服务、端口、标签", filterAll: "全部", filterModules: "模块", filterCategories: "分类", count: "{count}/{total} 项服务", empty: "没有符合条件的服务", uncategorized: "未分类" });
+Object.assign(messages.en.services, { searchPlaceholder: "Search services, ports, tags", filterAll: "All", filterModules: "Modules", filterCategories: "Categories", count: "{count}/{total} services", empty: "No services match this view", uncategorized: "Uncategorized" });
+Object.assign(messages["zh-Hant"].preview, { module: "模組" });
+Object.assign(messages["zh-Hans"].preview, { module: "模块" });
+Object.assign(messages.en.preview, { module: "module" });
+
 
 function supportedLanguage(language) {
   return supportedLanguages.includes(language) ? language : "zh-Hant";
@@ -655,6 +674,8 @@ const state = {
   statuses: new Map(),
   publicRoutes: new Map(),
   statusRefreshing: false,
+  serviceQuery: "",
+  serviceFilter: "all",
   launcherOpen: false,
   lastFocus: null,
   route: "home",
@@ -673,6 +694,10 @@ const elements = {
   servicesMeta: $("#services-meta"),
   clockTime: $("#clock-time"),
   serviceDetail: $("#service-detail"),
+  serviceSearch: $("#service-search"),
+  serviceFilters: $("#service-filters"),
+  moduleGrid: $("#module-grid"),
+  moduleMeta: $("#module-meta"),
   routeGrid: $("#route-grid"),
   opsGrid: $(".ops-grid"),
   hubRoutes: $("#hub-routes"),
@@ -864,6 +889,20 @@ function localizedService(service) {
   };
 }
 
+function localizedModule(module) {
+  return {
+    ...module,
+    name: tx("modules.items." + module.id + ".name", module.name),
+    description: tx("modules.items." + module.id + ".description", module.description),
+  };
+}
+
+function displayItem(item) {
+  if (item.kind === "route") return localizedRoute(item);
+  if (item.kind === "module") return localizedModule(item);
+  return localizedService(item);
+}
+
 function localizedOpsLink(link) {
   return {
     ...link,
@@ -930,16 +969,20 @@ function applyPortalConfig(config) {
   if (!config || typeof config !== "object") return;
   if (Array.isArray(config.routes) && config.routes.length) routePages = config.routes;
   if (Array.isArray(config.services) && config.services.length) services = config.services;
+  if (Array.isArray(config.modules) && config.modules.length) modules = config.modules;
   if (config.portNames && typeof config.portNames === "object") portNames = config.portNames;
   if (config.brand && typeof config.brand === "object") brandConfig = { ...brandConfig, ...config.brand };
   if (Array.isArray(config.heroTerminal) && config.heroTerminal.length) heroTerminalLines = config.heroTerminal;
   if (Array.isArray(config.ticker) && config.ticker.length) tickerItems = config.ticker;
   if (Array.isArray(config.opsLinks)) opsLinks = config.opsLinks;
   state.selectedId = services[0]?.id || "portal";
+  syncServiceFilterFromUrl();
   updateBrandContent();
   renderHeroTerminal();
   renderTicker();
   renderOpsLinks();
+  renderModules();
+  renderServiceFilters();
 }
 
 async function loadPortalConfig() {
@@ -1085,9 +1128,88 @@ function latencyLabel(service) {
 
 function routeLabel(item) {
   if (item.kind === "route") return t("routeLabels.pathRoute");
-  if (item.href.startsWith("/")) return t("routeLabels.currentHost");
-  if (item.href.startsWith("http://localhost")) return t("routeLabels.localhostOnly");
+  const href = String(item.href || "");
+  if (href.startsWith("/")) return t("routeLabels.currentHost");
+  if (href.startsWith("http://localhost")) return t("routeLabels.localhostOnly");
   return t("routeLabels.externalConsole");
+}
+
+function serviceCategory(service) {
+  return service.category || service.module || t("services.uncategorized");
+}
+
+function serviceTags(service) {
+  return Array.isArray(service.tags) ? service.tags.filter(Boolean) : [];
+}
+
+function serviceCategories() {
+  return Array.from(new Set(services.map(serviceCategory).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+}
+
+function serviceFilterFromModule(moduleId) {
+  return moduleId ? "module:" + moduleId : "all";
+}
+
+function serviceFilterFromCategory(category) {
+  return category ? "category:" + category : "all";
+}
+
+function serviceFilterMatches(filter) {
+  if (filter === "all") return true;
+  if (filter.startsWith("module:")) {
+    const moduleId = filter.slice("module:".length);
+    return services.some((service) => service.module === moduleId);
+  }
+  if (filter.startsWith("category:")) {
+    const category = filter.slice("category:".length);
+    return services.some((service) => serviceCategory(service) === category);
+  }
+  return false;
+}
+
+function serviceModuleHref(moduleId) {
+  return "/services?module=" + encodeURIComponent(moduleId);
+}
+
+function syncServiceFilterFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const moduleId = params.get("module");
+  const category = params.get("category");
+  const nextFilter = moduleId ? serviceFilterFromModule(moduleId) : (category ? serviceFilterFromCategory(category) : state.serviceFilter);
+  state.serviceFilter = serviceFilterMatches(nextFilter) ? nextFilter : "all";
+}
+
+function writeServiceFilterToUrl(filter) {
+  if (pageForPath() !== "services") return;
+  const params = new URLSearchParams(window.location.search);
+  params.delete("module");
+  params.delete("category");
+  if (filter.startsWith("module:")) params.set("module", filter.slice("module:".length));
+  if (filter.startsWith("category:")) params.set("category", filter.slice("category:".length));
+  const next = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
+  window.history.replaceState(null, "", next);
+}
+
+function moduleServiceCount(module) {
+  return services.filter((service) => service.module === module.id).length;
+}
+
+function serviceMatchesQuery(service) {
+  const query = state.serviceQuery.trim().toLowerCase();
+  if (!query) return true;
+  const item = localizedService(service);
+  const haystack = [service.id, service.code, item.name, item.description, service.href, service.port || "", service.scope || "", serviceCategory(service), service.module || "", serviceTags(service).join(" ")].join(" ").toLowerCase();
+  return haystack.includes(query);
+}
+
+function visibleServices() {
+  return services.filter((service) => {
+    const filterMatches =
+      state.serviceFilter === "all" ||
+      (state.serviceFilter.startsWith("module:") && service.module === state.serviceFilter.slice("module:".length)) ||
+      (state.serviceFilter.startsWith("category:") && serviceCategory(service) === state.serviceFilter.slice("category:".length));
+    return filterMatches && serviceMatchesQuery(service);
+  });
 }
 
 function selectedService() {
@@ -1113,8 +1235,9 @@ function targetAttributes(item) {
 
 function launchItems() {
   const routes = routePages.map((route) => ({ ...route, kind: "route" }));
+  const moduleItems = modules.map((module) => ({ ...module, kind: "module" }));
   const apps = services.map((service) => ({ ...service, kind: "service" }));
-  return routes.concat(apps);
+  return routes.concat(moduleItems, apps);
 }
 
 function renderRoutes() {
@@ -1168,25 +1291,65 @@ function renderHubLinks() {
 
 function renderServices() {
   if (!elements.grid) return;
-  elements.grid.innerHTML = services
-    .map((service) => {
-      const item = localizedService(service);
-      const label = statusLabel(service);
-      const selected = service.id === state.selectedId ? " selected" : "";
-      const openable = canOpenHref(service.href);
-      const disabled = openable ? "" : " local-disabled";
-      const href = openable ? service.href : "#";
-      const meta = openable ? routeLabel(service) : t("routeLabels.localOnly");
-      return (
-        "<a class=\"service-card accent-" + service.accent + selected + disabled + "\" href=\"" + escapeHtml(href) + "\" data-service-id=\"" + escapeHtml(service.id) + "\"" + (openable ? targetAttributes(service) : " aria-disabled=\"true\"") + ">" +
-        "<div class=\"service-top\"><span class=\"service-code\">" + escapeHtml(service.code) + "</span><span class=\"status-chip " + label + "\"><i></i>" + escapeHtml(statusText(label)) + "</span></div>" +
-        "<div><h3>" + escapeHtml(item.name) + "</h3><p>" + escapeHtml(item.description) + "</p></div>" +
-        "<div class=\"service-meta\"><span>" + escapeHtml(meta) + "</span><span>" + escapeHtml(latencyLabel(service)) + "</span></div>" +
-        "</a>"
-      );
-    })
-    .join("");
+  const items = visibleServices();
+  if (elements.servicesMeta) elements.servicesMeta.textContent = t("services.count", { count: items.length, total: services.length });
+  if (!items.length) {
+    elements.grid.innerHTML = htmlTag("div", "class=\"empty-state service-empty\"", escapeHtml(t("services.empty")));
+    return;
+  }
+  elements.grid.innerHTML = items.map((service) => {
+    const item = localizedService(service);
+    const label = statusLabel(service);
+    const selected = service.id === state.selectedId ? " selected" : "";
+    const openable = canOpenHref(service.href);
+    const disabled = openable ? "" : " local-disabled";
+    const href = openable ? service.href : "#";
+    const meta = openable ? routeLabel(service) : t("routeLabels.localOnly");
+    const attrs = "class=\"service-card accent-" + service.accent + selected + disabled + "\" href=\"" + escapeHtml(href) + "\" data-service-id=\"" + escapeHtml(service.id) + "\"" + (openable ? targetAttributes(service) : " aria-disabled=\"true\"");
+    const tags = serviceTags(service).slice(0, 3).map((tag) => htmlTag("span", "", escapeHtml(tag))).join("");
+    return htmlTag("a", attrs,
+      htmlTag("div", "class=\"service-top\"", htmlTag("span", "class=\"service-code\"", escapeHtml(service.code)) + htmlTag("span", "class=\"status-chip " + label + "\"", htmlTag("i", "", "") + escapeHtml(statusText(label)))) +
+      htmlTag("div", "", htmlTag("div", "class=\"service-category\"", escapeHtml(serviceCategory(service))) + htmlTag("h3", "", escapeHtml(item.name)) + htmlTag("p", "", escapeHtml(item.description))) +
+      htmlTag("div", "class=\"service-tags\"", tags) +
+      htmlTag("div", "class=\"service-meta\"", htmlTag("span", "", escapeHtml(meta)) + htmlTag("span", "", escapeHtml(latencyLabel(service))))
+    );
+  }).join("");
 }
+function renderModules() {
+  if (!elements.moduleGrid) return;
+  const items = modules.length ? modules : [];
+  if (elements.moduleMeta) elements.moduleMeta.textContent = t("modules.meta", { count: items.length, services: services.length });
+  elements.moduleGrid.innerHTML = items.map((module) => {
+    const item = localizedModule(module);
+    const count = moduleServiceCount(module);
+    const href = item.href || serviceModuleHref(item.id);
+    const attrs = "class=\"module-card accent-" + item.accent + "\" href=\"" + escapeHtml(href) + "\"" + targetAttributes({ ...item, href });
+    return htmlTag("a", attrs,
+      htmlTag("span", "class=\"module-code\"", escapeHtml(item.code)) +
+      htmlTag("span", "class=\"module-copy\"", htmlTag("strong", "", escapeHtml(item.name)) + htmlTag("small", "", escapeHtml(item.description))) +
+      htmlTag("span", "class=\"module-status\"", escapeHtml(t("modules." + (item.status || "slot"), item.status || "slot")) + " \u00B7 " + escapeHtml(t("modules.services", { count })))
+    );
+  }).join("");
+}
+
+function renderServiceFilters() {
+  if (!elements.serviceFilters) return;
+  const categories = serviceCategories();
+  const active = serviceFilterMatches(state.serviceFilter) ? state.serviceFilter : "all";
+  const button = (id, label, tone = "") => htmlTag("button", "type=\"button\" class=\"filter-chip" + (active === id ? " active" : "") + (tone ? " " + tone : "") + "\" data-service-filter=\"" + escapeHtml(id) + "\"", escapeHtml(label));
+  const moduleButtons = modules.map((module) => {
+    const item = localizedModule(module);
+    return button(serviceFilterFromModule(module.id), item.name, "module-chip");
+  }).join("");
+  const categoryButtons = categories.map((category) => button(serviceFilterFromCategory(category), category)).join("");
+  elements.serviceFilters.innerHTML =
+    button("all", t("services.filterAll"), "all-chip") +
+    htmlTag("span", "class=\"filter-group-label\"", escapeHtml(t("services.filterModules"))) +
+    moduleButtons +
+    htmlTag("span", "class=\"filter-group-label\"", escapeHtml(t("services.filterCategories"))) +
+    categoryButtons;
+}
+
 function renderDetail() {
   if (!elements.serviceDetail) return;
   const rawService = selectedService();
@@ -1238,7 +1401,6 @@ function updateSummary(payload) {
   if (elements.statusTitle) elements.statusTitle.textContent = online === total ? t("health.allNominal") : t("health.servicePending", { count: total - online });
   const time = formatDisplayTime(payload.updatedAt);
   if (elements.statusTime) elements.statusTime.textContent = t("health.updated", { time });
-  if (elements.servicesMeta) elements.servicesMeta.textContent = t("health.onlineCount", { online, total });
   if (elements.homeOnline) elements.homeOnline.textContent = t("health.onlineCount", { online, total });
   if (elements.homeUpdated) elements.homeUpdated.textContent = time;
 }
@@ -1255,14 +1417,15 @@ function filteredItems() {
   const items = launchItems();
   if (!query) return items;
   return items.filter((item) => {
-    const display = item.kind === "route" ? localizedRoute(item) : localizedService(item);
-    const haystack = [item.kind, routeKindText(item.kind), item.id, item.code, display.name, display.description, item.href, item.port || "", item.scope || "", routeLabel(item)].join(" ").toLowerCase();
+    const display = displayItem(item);
+    const haystack = [item.kind, routeKindText(item.kind), item.id, item.code, display.name, display.description, item.href, item.port || "", item.scope || "", item.category || "", item.module || "", serviceTags(item).join(" "), routeLabel(item)].join(" ").toLowerCase();
     return haystack.includes(query);
   });
 }
 
 function statusForItem(item) {
   if (item.kind === "route") return item.id === state.route ? "active" : "route";
+  if (item.kind === "module") return item.status === "ready" ? "active" : "route";
   return statusLabel(item);
 }
 
@@ -1280,7 +1443,7 @@ function renderLauncher() {
 
   elements.launcherResults.innerHTML = results
     .map((item, index) => {
-      const display = item.kind === "route" ? localizedRoute(item) : localizedService(item);
+      const display = displayItem(item);
       const selected = index === state.selectedIndex ? " selected" : "";
       const label = statusForItem(item);
       return (
@@ -1297,18 +1460,18 @@ function renderLauncher() {
 }
 
 function renderPreview(item) {
-  const display = item.kind === "route" ? localizedRoute(item) : localizedService(item);
-  const secondLine = item.kind === "route" ? item.href : (item.port ? t("preview.port", { port: item.port }) : routeLabel(item));
+  const display = displayItem(item);
+  const secondLine = item.kind === "route" ? item.href : (item.kind === "module" ? item.href : (item.port ? t("preview.port", { port: item.port }) : routeLabel(item)));
   return (
-    "<div class=\"preview-code accent-" + item.accent + "\">" + escapeHtml(item.code) + "</div>" +
-    "<h3>" + escapeHtml(display.name) + "</h3>" +
-    "<p>" + escapeHtml(display.description) + "</p>" +
-    "<dl class=\"preview-list\">" +
-    "<div><dt>" + escapeHtml(t("launcher.type")) + "</dt><dd>" + escapeHtml(routeKindText(item.kind)) + "</dd></div>" +
-    "<div><dt>" + escapeHtml(t("launcher.target")) + "</dt><dd>" + escapeHtml(secondLine) + "</dd></div>" +
-    "<div><dt>" + escapeHtml(t("launcher.status")) + "</dt><dd>" + escapeHtml(statusText(statusForItem(item))) + "</dd></div>" +
-    "</dl>" +
-    "<button class=\"button primary full\" type=\"button\" data-open-active>" + escapeHtml(t("launcher.open")) + "</button>"
+    htmlTag("div", "class=\"preview-code accent-" + item.accent + "\"", escapeHtml(item.code)) +
+    htmlTag("h3", "", escapeHtml(display.name)) +
+    htmlTag("p", "", escapeHtml(display.description)) +
+    htmlTag("dl", "class=\"preview-list\"",
+      htmlTag("div", "", htmlTag("dt", "", escapeHtml(t("launcher.type"))) + htmlTag("dd", "", escapeHtml(routeKindText(item.kind)))) +
+      htmlTag("div", "", htmlTag("dt", "", escapeHtml(t("launcher.target"))) + htmlTag("dd", "", escapeHtml(secondLine))) +
+      htmlTag("div", "", htmlTag("dt", "", escapeHtml(t("launcher.status"))) + htmlTag("dd", "", escapeHtml(statusText(statusForItem(item)))))
+    ) +
+    htmlTag("button", "class=\"button primary full\" type=\"button\" data-open-active", escapeHtml(t("launcher.open")))
   );
 }
 
@@ -1334,8 +1497,9 @@ function closeLauncher() {
 function openItem(item) {
   if (item.kind === "service") setSelected(item.id);
   closeLauncher();
-  if (item.href.startsWith("/")) window.location.assign(item.href);
-  else window.open(item.href, "_blank", "noopener,noreferrer");
+  const href = String(item.href || "/services");
+  if (href.startsWith("/")) window.location.assign(href);
+  else window.open(href, "_blank", "noopener,noreferrer");
 }
 
 async function refreshStatus(options = {}) {
@@ -2185,6 +2349,23 @@ function startMesh() {
   };
 }
 
+if (elements.serviceSearch) {
+  elements.serviceSearch.addEventListener("input", () => {
+    state.serviceQuery = elements.serviceSearch.value;
+    renderServices();
+  });
+}
+if (elements.serviceFilters) {
+  elements.serviceFilters.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-service-filter]");
+    if (!button) return;
+    state.serviceFilter = button.dataset.serviceFilter || "all";
+    writeServiceFilterToUrl(state.serviceFilter);
+    renderServiceFilters();
+    renderServices();
+  });
+}
+
 if (elements.grid) {
   elements.grid.addEventListener("click", (event) => {
     if (event.target.closest(".local-disabled")) event.preventDefault();
@@ -2279,6 +2460,8 @@ function renderShell() {
   renderOpsLinks();
   renderRoutes();
   renderHubLinks();
+  renderModules();
+  renderServiceFilters();
   renderServices();
   renderDetail();
   updateClock();

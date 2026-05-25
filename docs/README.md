@@ -7,6 +7,10 @@ This directory stores project context that should survive across agent sessions.
 - [Deployment Guide](deployment.md)
 - [Configuration Guide](configuration.md)
 
+## Decisions
+
+- Architecture decisions live in `docs/decisions/`.
+
 ## Issues
 
 - Keep debugging notes, regressions, and incident records in `docs/issues/`.
