@@ -1405,9 +1405,17 @@ function updateSummary(payload) {
   if (elements.homeUpdated) elements.homeUpdated.textContent = time;
 }
 
+function syncSelectedServiceCards() {
+  if (!elements.grid) return;
+  Array.from(elements.grid.querySelectorAll("[data-service-id]")).forEach((card) => {
+    card.classList.toggle("selected", card.dataset.serviceId === state.selectedId);
+  });
+}
+
 function setSelected(id) {
+  if (!id || state.selectedId === id) return;
   state.selectedId = id;
-  renderServices();
+  syncSelectedServiceCards();
   renderDetail();
   if (state.launcherOpen) renderLauncher();
 }
