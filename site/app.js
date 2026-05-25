@@ -1997,7 +1997,16 @@ function startMesh() {
 
   function drawCell(target, cell, alpha, tone = cell.tone, x = cell.x, y = cell.y, size = cell.size) {
     setPixelFill(target, tone, alpha);
-    target.fillRect(Math.round(x), Math.round(y), size, size);
+    target.fillRect(Math.floor(x), Math.floor(y), Math.max(1, Math.floor(size)), Math.max(1, Math.floor(size)));
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function bounceWave(value) {
+    const wrapped = ((value % 1) + 1) % 1;
+    return wrapped < 0.5 ? wrapped * 4 - 1 : 3 - wrapped * 4;
   }
 
   function resize() {
@@ -2014,8 +2023,8 @@ function startMesh() {
     activeCells.length = 0;
     seed = 8790;
 
-    const unit = 4.5 * ratio;
-    const gap = Math.max(1, 0.95 * ratio);
+    const unit = 9 * ratio;
+    const gap = Math.max(1.2 * ratio, 1);
     const cols = Math.ceil(width / unit) + 2;
     const rows = Math.ceil(height / unit) + 2;
     const occupied = new Uint8Array(cols * rows);
@@ -2038,7 +2047,7 @@ function startMesh() {
 
     function chooseSpan(col, row) {
       const roll = random();
-      const candidates = roll < 0.045 ? [3, 2, 1] : roll < 0.34 ? [2, 1] : random() < 0.22 ? [2, 1] : [1];
+      const candidates = roll < 0.025 ? [3, 2, 1] : roll < 0.42 ? [2, 1] : random() < 0.16 ? [2, 1] : [1];
       for (const span of candidates) if (isFree(col, row, span)) return span;
       return 1;
     }
@@ -2055,17 +2064,32 @@ function startMesh() {
         const toneRoll = random();
         const greenBias = yRatio > 0.72 ? 0.05 : yRatio > 0.44 && xRatio > 0.14 && xRatio < 0.86 ? 0.022 : 0.004;
         const tone = toneRoll < greenBias ? "green" : toneRoll < greenBias + 0.007 ? "blue" : "gray";
-        const inset = random() * Math.min(gap, 1.2 * ratio);
-        const size = Math.max(2 * ratio, span * unit - gap - inset);
+        const slotSize = span * unit;
+        const guard = Math.max(1.15 * ratio, gap * (0.72 + random() * 0.32));
+        const motionRoom = Math.min(2.4 * ratio, Math.max(1.45 * ratio, slotSize * (0.11 + random() * 0.035)));
+        const size = Math.max(4 * ratio, Math.floor(slotSize - guard * 2 - motionRoom));
+        const minX = slotX + guard;
+        const minY = slotY + guard;
+        const maxX = Math.max(minX, slotX + slotSize - guard - size);
+        const maxY = Math.max(minY, slotY + slotSize - guard - size);
+        const baseX = minX + (maxX - minX) * 0.5;
+        const baseY = minY + (maxY - minY) * 0.5;
         const cell = {
-          x: slotX + inset * 0.5,
-          y: slotY + inset * 0.5,
+          x: baseX,
+          y: baseY,
+          renderX: baseX,
+          renderY: baseY,
+          minX,
+          maxX,
+          minY,
+          maxY,
+          travelX: (maxX - minX) * 0.5,
+          travelY: (maxY - minY) * 0.5,
           size,
-          alpha: tone === "gray" ? 0.075 + random() * 0.2 : 0.16 + random() * 0.3,
+          alpha: tone === "gray" ? 0.085 + random() * 0.2 : 0.18 + random() * 0.3,
           phase: random() * Math.PI * 2,
-          speed: 0.22 + random() * 0.32,
-          drift: (1.8 + random() * 2.4) * ratio,
-          flow: 0.82 + random() * 0.42,
+          speed: 0.035 + random() * 0.028,
+          flow: 0.84 + random() * 0.38,
           lane: random() * Math.PI * 2,
           tone,
           active: true,
@@ -2077,7 +2101,7 @@ function startMesh() {
 
     if (staticContext) {
       staticContext.clearRect(0, 0, width, height);
-      for (const cell of cells) drawCell(staticContext, cell, cell.alpha * 0.16);
+      for (const cell of cells) drawCell(staticContext, cell, cell.alpha * 0.06);
     }
   }
 
@@ -2104,29 +2128,29 @@ function startMesh() {
     const time = reduceMotion ? 0 : (now - startTime) / 1000;
     context.clearRect(0, 0, width, height);
     if (staticCanvas.width) {
-      context.globalAlpha = reduceMotion ? 1 : 0.38 + Math.sin(time * 0.28) * 0.04;
+      context.globalAlpha = reduceMotion ? 1 : 0.18 + Math.sin(time * 0.24) * 0.025;
       context.drawImage(staticCanvas, 0, 0);
       context.globalAlpha = 1;
     }
     const hoverRadius = 92 * ratio;
     const hoverRadiusSq = hoverRadius * hoverRadius;
-    const globalFlowX = reduceMotion ? 0 : Math.sin(time * 0.2) * 2.2 * ratio;
-    const globalFlowY = reduceMotion ? 0 : Math.cos(time * 0.16) * 1.6 * ratio;
 
     for (const cell of activeCells) {
-      const waveX = Math.sin(time * cell.speed + cell.phase + cell.y * 0.0032);
-      const waveY = Math.cos(time * (cell.speed * 0.78) + cell.lane + cell.x * 0.0024);
-      const stream = Math.sin(time * 0.9 + cell.lane + (cell.x + cell.y) * 0.0038);
-      const floatX = reduceMotion ? 0 : globalFlowX + waveX * cell.drift + stream * 0.7 * ratio;
-      const floatY = reduceMotion ? 0 : globalFlowY + waveY * cell.drift * 0.72 + stream * 0.42 * ratio;
-      const pulse = 0.76 + Math.sin(time * 1.05 + cell.phase + cell.x * 0.0011) * 0.18 + waveY * 0.09;
-      drawCell(context, cell, Math.max(0.04, cell.alpha * pulse * cell.flow), cell.tone, cell.x + floatX, cell.y + floatY);
+      const bounceX = reduceMotion ? 0 : bounceWave(time * cell.speed + cell.phase);
+      const bounceY = reduceMotion ? 0 : bounceWave(time * (cell.speed * 0.82) + cell.lane);
+      const x = clamp(cell.x + bounceX * cell.travelX, cell.minX, cell.maxX);
+      const y = clamp(cell.y + bounceY * cell.travelY, cell.minY, cell.maxY);
+      const flowBand = Math.sin(time * 0.78 + cell.lane + cell.x * 0.006 + cell.y * 0.011);
+      const pulse = 0.8 + flowBand * 0.17 + Math.sin(time * 0.46 + cell.phase) * 0.08;
+      cell.renderX = x;
+      cell.renderY = y;
+      drawCell(context, cell, Math.max(0.045, cell.alpha * pulse * cell.flow), cell.tone, x, y);
     }
 
     if (pointerX > -1000) {
       for (const cell of cells) {
-        const centerX = cell.x + cell.size / 2;
-        const centerY = cell.y + cell.size / 2;
+        const centerX = cell.renderX + cell.size / 2;
+        const centerY = cell.renderY + cell.size / 2;
         const dx = centerX - pointerX;
         const dy = centerY - pointerY;
         const distanceSq = dx * dx + dy * dy;
@@ -2135,7 +2159,7 @@ function startMesh() {
         drawCell(context, cell, Math.max(0.08, cell.alpha + hover * 0.5), hover > 0.24 ? "green" : cell.tone);
         if (hover > 0.48) {
           context.fillStyle = "rgba(232, 255, 240, " + Math.min(0.32, hover * 0.34).toFixed(3) + ")";
-          context.fillRect(cell.x + 2 * ratio, cell.y + 2 * ratio, Math.max(1, 2 * ratio), Math.max(1, 2 * ratio));
+          context.fillRect(cell.renderX + 2 * ratio, cell.renderY + 2 * ratio, Math.max(1, 2 * ratio), Math.max(1, 2 * ratio));
         }
       }
     }
