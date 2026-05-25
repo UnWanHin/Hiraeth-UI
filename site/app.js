@@ -2138,8 +2138,8 @@ function startMesh() {
   const activeCells = [];
   const staticCanvas = document.createElement("canvas");
   const staticContext = staticCanvas.getContext("2d");
-  const seedKey = "hiraeth.mesh.seed.v3";
-  const epochKey = "hiraeth.mesh.epoch.v3";
+  const seedKey = "hiraeth.mesh.seed.v5";
+  const epochKey = "hiraeth.mesh.epoch.v5";
   let width = 0;
   let height = 0;
   let ratio = 1;
@@ -2225,6 +2225,20 @@ function startMesh() {
     return clamp(value, -1, 1);
   }
 
+  function dynamicAccent(cell, time) {
+    const ribbon = Math.sin(time * 0.92 - cell.col * 0.18 + cell.row * 0.25 + cell.colorPhase);
+    const current = Math.sin(time * 0.54 + cell.col * 0.08 + cell.row * 0.32 + cell.stream * 2.15);
+    const shimmer = Math.sin(time * 0.31 + cell.colorPhase * 0.72 + (cell.col - cell.row) * 0.11);
+    const gate = Math.sin(time * 0.18 + cell.colorGate * Math.PI * 2);
+    const field = ribbon * 0.6 + current * 0.24 + shimmer * 0.1 + gate * 0.06 + cell.colorBias;
+    const lift = clamp((field - 0.66) / 0.28, 0, 1);
+    if (lift <= 0) return { tone: "gray", lift: 0 };
+    const hue = (Math.sin(time * 0.23 + cell.colorPhase + cell.col * 0.06 + cell.row * 0.035) + 1) * 0.5;
+    if (hue > 0.965) return { tone: "amber", lift: lift * 0.72 };
+    if (hue > 0.88) return { tone: "blue", lift: lift * 0.82 };
+    return { tone: "green", lift };
+  }
+
   function resize() {
     ratio = window.devicePixelRatio || 1;
     width = canvas.width = Math.floor(window.innerWidth * ratio);
@@ -2239,18 +2253,11 @@ function startMesh() {
     activeCells.length = 0;
     seed = mixSeed(baseSeed, width, height);
 
-    const unit = 10.5 * ratio;
-    const gap = Math.max(1.15 * ratio, 1);
+    const unit = 12.5 * ratio;
+    const gap = Math.max(1 * ratio, 1);
     const cols = Math.ceil(width / unit) + 2;
     const rows = Math.ceil(height / unit) + 2;
     const occupied = new Uint8Array(cols * rows);
-    const slotCount = cols * rows;
-    const colorBudget = {
-      green: Math.max(5, Math.floor(slotCount * 0.018)),
-      blue: Math.max(2, Math.floor(slotCount * 0.005)),
-      amber: Math.max(1, Math.floor(slotCount * 0.003)),
-    };
-    const colorCount = { green: 0, blue: 0, amber: 0 };
 
     function isFree(col, row, span) {
       if (col + span > cols || row + span > rows) return false;
@@ -2275,22 +2282,6 @@ function startMesh() {
       return 1;
     }
 
-    function chooseTone() {
-      const roll = random();
-      if (roll < 0.018 && colorCount.green < colorBudget.green) {
-        colorCount.green += 1;
-        return "green";
-      }
-      if (roll >= 0.018 && roll < 0.024 && colorCount.blue < colorBudget.blue) {
-        colorCount.blue += 1;
-        return "blue";
-      }
-      if (roll >= 0.024 && roll < 0.028 && colorCount.amber < colorBudget.amber) {
-        colorCount.amber += 1;
-        return "amber";
-      }
-      return "gray";
-    }
 
     for (let row = 0; row < rows; row += 1) {
       for (let col = 0; col < cols; col += 1) {
@@ -2300,18 +2291,18 @@ function startMesh() {
         const slotX = col * unit;
         const slotY = row * unit;
         const slotSize = span * unit;
-        const tone = chooseTone();
-        const guard = Math.max(1.05 * ratio, gap * (0.72 + random() * 0.34));
-        const motionRoom = Math.min(2.7 * ratio, Math.max(1.35 * ratio, slotSize * (0.12 + random() * 0.045)));
-        const size = Math.max(4 * ratio, Math.floor(slotSize - guard * 2 - motionRoom));
+        const tone = "gray";
+        const guard = Math.max(0.95 * ratio, gap * (0.58 + random() * 0.24));
+        const motionRoom = Math.min(4.6 * ratio, Math.max(2.8 * ratio, slotSize * (0.22 + random() * 0.08)));
+        const size = Math.max(4.5 * ratio, Math.floor(slotSize - guard * 2 - motionRoom));
         const minX = slotX + guard;
         const minY = slotY + guard;
         const maxX = Math.max(minX, slotX + slotSize - guard - size);
         const maxY = Math.max(minY, slotY + slotSize - guard - size);
         const midX = minX + (maxX - minX) * (0.42 + random() * 0.16);
         const midY = minY + (maxY - minY) * (0.42 + random() * 0.16);
-        const travelX = (maxX - minX) * (0.45 + random() * 0.28);
-        const travelY = (maxY - minY) * (0.38 + random() * 0.28);
+        const travelX = (maxX - minX) * (0.78 + random() * 0.18);
+        const travelY = (maxY - minY) * (0.72 + random() * 0.22);
         const stream = Math.sin(row * 0.43 + col * 0.17 + random() * 2.4);
         const cell = {
           col,
@@ -2327,13 +2318,16 @@ function startMesh() {
           travelX,
           travelY,
           size,
-          alpha: tone === "gray" ? 0.07 + random() * 0.18 : 0.16 + random() * 0.28,
+          alpha: 0.1 + random() * 0.18,
           phaseA: random() * Math.PI * 2,
           phaseB: random() * Math.PI * 2,
-          speed: 0.22 + random() * 0.18,
+          speed: 0.28 + random() * 0.24,
           stream,
           tone,
-          flow: 0.82 + random() * 0.36,
+          colorPhase: random() * Math.PI * 2,
+          colorGate: random(),
+          colorBias: random() * 0.18 - 0.08,
+          flow: 0.9 + random() * 0.3,
         };
         cells.push(cell);
         activeCells.push(cell);
@@ -2345,7 +2339,7 @@ function startMesh() {
       for (const cell of cells) {
         cell.renderX = cell.midX;
         cell.renderY = cell.midY;
-        drawCell(staticContext, cell, cell.alpha * 0.055, cell.tone, cell.midX, cell.midY);
+        drawCell(staticContext, cell, cell.alpha * 0.022, "gray", cell.midX, cell.midY);
       }
     }
   }
@@ -2363,7 +2357,7 @@ function startMesh() {
   }
 
   function draw(timestamp = 0) {
-    if (!reduceMotion && timestamp && timestamp - lastPaint < 22) {
+    if (!reduceMotion && timestamp && timestamp - lastPaint < 16) {
       raf = requestAnimationFrame(draw);
       return;
     }
@@ -2371,27 +2365,28 @@ function startMesh() {
     const time = reduceMotion ? 0 : (Date.now() - flowEpoch) / 1000;
     context.clearRect(0, 0, width, height);
     if (staticCanvas.width) {
-      context.globalAlpha = reduceMotion ? 1 : 0.12 + Math.sin(time * 0.18) * 0.018;
+      context.globalAlpha = reduceMotion ? 1 : 0.035 + Math.sin(time * 0.18) * 0.008;
       context.drawImage(staticCanvas, 0, 0);
       context.globalAlpha = 1;
     }
 
     const hoverRadius = 96 * ratio;
     const hoverRadiusSq = hoverRadius * hoverRadius;
-    const riverPhase = time * 0.24;
+    const riverPhase = time * 0.52;
 
     for (const cell of activeCells) {
-      const streamA = Math.sin(time * cell.speed + cell.phaseA + cell.row * 0.34 + cell.col * 0.09 + riverPhase);
-      const streamB = Math.cos(time * (cell.speed * 0.72) + cell.phaseB - cell.row * 0.12 + cell.col * 0.21);
-      const eddy = Math.sin(time * 0.16 + cell.stream * 2.8 + (cell.col + cell.row) * 0.075);
-      const driftX = normalizeWave(streamA * 0.58 + streamB * 0.27 + eddy * 0.15);
-      const driftY = normalizeWave(streamB * 0.5 + Math.sin(time * 0.19 + cell.phaseA + cell.row * 0.18) * 0.32 + eddy * 0.18);
+      const streamA = Math.sin(time * (0.52 + cell.speed) + cell.phaseA + cell.row * 0.22 - cell.col * 0.08 + riverPhase);
+      const streamB = Math.cos(time * (0.34 + cell.speed * 0.5) + cell.phaseB + cell.col * 0.18 + cell.row * 0.06);
+      const eddy = Math.sin(time * 0.31 + cell.stream * 3.4 + (cell.col - cell.row) * 0.12);
+      const driftX = normalizeWave(streamA * 0.62 + streamB * 0.22 + eddy * 0.16);
+      const driftY = normalizeWave(streamB * 0.52 + Math.sin(time * 0.44 + cell.phaseA + cell.row * 0.1 + cell.col * 0.04) * 0.3 + eddy * 0.18);
       const x = clamp(cell.midX + driftX * cell.travelX, cell.minX, cell.maxX);
       const y = clamp(cell.midY + driftY * cell.travelY, cell.minY, cell.maxY);
-      const pulse = 0.78 + Math.sin(time * 0.36 + cell.phaseB + cell.stream) * 0.09 + Math.sin(time * 0.11 + cell.row * 0.07) * 0.1;
+      const pulse = 0.88 + Math.sin(time * 0.48 + cell.phaseB + cell.stream) * 0.08 + Math.sin(time * 0.18 + cell.row * 0.07) * 0.08;
+      const accent = dynamicAccent(cell, time);
       cell.renderX = x;
       cell.renderY = y;
-      drawCell(context, cell, Math.max(0.038, cell.alpha * pulse * cell.flow), cell.tone, x, y);
+      drawCell(context, cell, Math.max(0.05, cell.alpha * pulse * cell.flow + accent.lift * 0.22), accent.tone, x, y);
     }
 
     if (pointerX > -1000) {
