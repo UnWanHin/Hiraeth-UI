@@ -1886,15 +1886,11 @@ function startPixelTrail() {
     context.imageSmoothingEnabled = false;
   }
 
-  function snap(value, grid) {
-    return Math.round(value / grid) * grid;
-  }
-
   function pushCell(x, y, size, life, alpha, tone = "green") {
-    const grid = 14 * ratio;
+    const jitter = 5 * ratio;
     particles.push({
-      x: snap(x * ratio, grid),
-      y: snap(y * ratio, grid),
+      x: Math.round(x * ratio + (Math.random() - 0.5) * jitter),
+      y: Math.round(y * ratio + (Math.random() - 0.5) * jitter),
       size: size * ratio,
       life,
       maxLife: life,
@@ -1989,10 +1985,6 @@ function startMesh() {
     return seed / 4294967296;
   }
 
-  function snap(value, grid) {
-    return Math.round(value / grid) * grid;
-  }
-
   function resize() {
     ratio = window.devicePixelRatio || 1;
     width = canvas.width = Math.floor(window.innerWidth * ratio);
@@ -2003,29 +1995,53 @@ function startMesh() {
     cells.length = 0;
     seed = 8790;
 
-    const pitch = 14 * ratio;
-    const cols = Math.ceil(width / pitch) + 2;
-    const rows = Math.ceil(height / pitch) + 2;
+    const pitch = 13 * ratio;
+    const cols = Math.ceil(width / pitch) + 3;
+    const rows = Math.ceil(height / pitch) + 3;
     for (let row = -1; row < rows; row += 1) {
+      const rowOffset = (random() - 0.5) * pitch * 1.35;
       for (let col = -1; col < cols; col += 1) {
-        const x = col * pitch;
-        const y = row * pitch;
+        if (random() < 0.1) continue;
+        const x = col * pitch + rowOffset + (random() - 0.5) * pitch * 1.15;
+        const y = row * pitch + (random() - 0.5) * pitch * 1.05;
         const xRatio = x / Math.max(1, width);
         const yRatio = y / Math.max(1, height);
         const roll = random();
-        const greenBias = yRatio > 0.72 ? 0.055 : yRatio > 0.44 && xRatio > 0.14 && xRatio < 0.86 ? 0.024 : 0.004;
-        const tone = roll < greenBias ? "green" : roll < greenBias + 0.008 ? "blue" : "gray";
+        const greenBias = yRatio > 0.72 ? 0.05 : yRatio > 0.44 && xRatio > 0.14 && xRatio < 0.86 ? 0.022 : 0.004;
+        const tone = roll < greenBias ? "green" : roll < greenBias + 0.007 ? "blue" : "gray";
         const sizeRoll = random();
         cells.push({
           x,
           y,
-          size: (sizeRoll < 0.72 ? 4 : sizeRoll < 0.96 ? 5 : 7) * ratio,
-          alpha: tone === "gray" ? 0.08 + random() * 0.2 : 0.18 + random() * 0.28,
+          size: (sizeRoll < 0.42 ? 3 : sizeRoll < 0.76 ? 4 : sizeRoll < 0.94 ? 6 : 8) * ratio,
+          alpha: tone === "gray" ? 0.07 + random() * 0.22 : 0.16 + random() * 0.3,
           phase: random() * Math.PI * 2,
-          speed: 0.012 + random() * 0.018,
-          drift: (0.55 + random() * 1.25) * ratio,
+          speed: 0.01 + random() * 0.024,
+          drift: (0.9 + random() * 2.1) * ratio,
           tone,
-          active: tone !== "gray" || random() < 0.16,
+          active: tone !== "gray" || random() < 0.2,
+        });
+      }
+    }
+
+    const clusters = Math.max(18, Math.min(90, Math.floor((window.innerWidth * window.innerHeight) / 18000)));
+    for (let cluster = 0; cluster < clusters; cluster += 1) {
+      const cx = random() * width;
+      const cy = random() * height;
+      const members = 3 + Math.floor(random() * 6);
+      for (let member = 0; member < members; member += 1) {
+        const toneRoll = random();
+        const tone = toneRoll < 0.18 ? "green" : toneRoll < 0.22 ? "blue" : "gray";
+        cells.push({
+          x: cx + (random() - 0.5) * pitch * 4.2,
+          y: cy + (random() - 0.5) * pitch * 4.2,
+          size: (random() < 0.72 ? 4 : random() < 0.92 ? 6 : 8) * ratio,
+          alpha: tone === "gray" ? 0.12 + random() * 0.24 : 0.22 + random() * 0.34,
+          phase: random() * Math.PI * 2,
+          speed: 0.012 + random() * 0.03,
+          drift: (1.1 + random() * 2.4) * ratio,
+          tone,
+          active: true,
         });
       }
     }
@@ -2055,8 +2071,8 @@ function startMesh() {
     for (const cell of cells) {
       const floatX = reduceMotion ? 0 : Math.sin(frame * cell.speed + cell.phase) * cell.drift;
       const floatY = reduceMotion ? 0 : Math.cos(frame * (cell.speed * 0.82) + cell.phase) * cell.drift;
-      const x = snap(cell.x + floatX, ratio);
-      const y = snap(cell.y + floatY, ratio);
+      const x = Math.round(cell.x + floatX);
+      const y = Math.round(cell.y + floatY);
       const dx = x - pointerX;
       const dy = y - pointerY;
       const distanceSq = dx * dx + dy * dy;
