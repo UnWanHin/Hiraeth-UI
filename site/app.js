@@ -1926,7 +1926,12 @@ function startPixelTrail() {
     lastY = y;
   }
 
-  function draw() {
+  function draw(timestamp = 0) {
+    if (!reduceMotion && timestamp - lastPaint < 42) {
+      raf = requestAnimationFrame(draw);
+      return;
+    }
+    lastPaint = timestamp;
     context.clearRect(0, 0, width, height);
     for (let index = particles.length - 1; index >= 0; index -= 1) {
       const particle = particles[index];
@@ -1979,6 +1984,7 @@ function startMesh() {
   let ratio = 1;
   let raf = 0;
   let frame = 0;
+  let lastPaint = 0;
   let seed = 8790;
   let pointerX = -9999;
   let pointerY = -9999;
@@ -2062,10 +2068,11 @@ function startMesh() {
           size,
           alpha: tone === "gray" ? 0.075 + random() * 0.2 : 0.16 + random() * 0.3,
           phase: random() * Math.PI * 2,
-          speed: 0.009 + random() * 0.018,
-          drift: (0.18 + random() * 0.42) * ratio,
+          speed: 0.0025 + random() * 0.0055,
+          drift: (0.12 + random() * 0.32) * ratio,
+          flow: 0.45 + random() * 0.55,
           tone,
-          active: tone !== "gray" || random() < 0.14,
+          active: tone !== "gray" || random() < 0.34,
         };
         cells.push(cell);
         if (cell.active) activeCells.push(cell);
@@ -2074,7 +2081,7 @@ function startMesh() {
 
     if (staticContext) {
       staticContext.clearRect(0, 0, width, height);
-      for (const cell of cells) drawCell(staticContext, cell, cell.alpha * 0.78);
+      for (const cell of cells) drawCell(staticContext, cell, cell.alpha * 0.72);
     }
   }
 
@@ -2092,30 +2099,38 @@ function startMesh() {
 
   function draw() {
     context.clearRect(0, 0, width, height);
-    if (staticCanvas.width) context.drawImage(staticCanvas, 0, 0);
     frame += reduceMotion ? 0 : 1;
+    if (staticCanvas.width) {
+      context.globalAlpha = reduceMotion ? 1 : 0.94 + Math.sin(frame * 0.0032) * 0.035;
+      context.drawImage(staticCanvas, 0, 0);
+      context.globalAlpha = 1;
+    }
     const hoverRadius = 92 * ratio;
     const hoverRadiusSq = hoverRadius * hoverRadius;
 
     for (const cell of activeCells) {
-      const floatX = reduceMotion ? 0 : Math.sin(frame * cell.speed + cell.phase) * cell.drift;
-      const floatY = reduceMotion ? 0 : Math.cos(frame * (cell.speed * 0.82) + cell.phase) * cell.drift;
-      const pulse = 0.76 + Math.sin(frame * 0.024 + cell.phase) * 0.24;
-      drawCell(context, cell, Math.max(0.04, cell.alpha * pulse), cell.tone, cell.x + floatX, cell.y + floatY);
+      const waveX = Math.sin(frame * cell.speed + cell.phase + cell.y * 0.0017);
+      const waveY = Math.cos(frame * (cell.speed * 0.86) + cell.phase + cell.x * 0.0013);
+      const floatX = reduceMotion ? 0 : waveX * cell.drift;
+      const floatY = reduceMotion ? 0 : waveY * cell.drift * 0.72;
+      const pulse = 0.74 + Math.sin(frame * 0.006 + cell.phase + cell.x * 0.0009) * 0.16 + waveY * 0.08;
+      drawCell(context, cell, Math.max(0.035, cell.alpha * pulse * cell.flow), cell.tone, cell.x + floatX, cell.y + floatY);
     }
 
-    for (const cell of cells) {
-      const centerX = cell.x + cell.size / 2;
-      const centerY = cell.y + cell.size / 2;
-      const dx = centerX - pointerX;
-      const dy = centerY - pointerY;
-      const distanceSq = dx * dx + dy * dy;
-      if (distanceSq >= hoverRadiusSq) continue;
-      const hover = 1 - Math.sqrt(distanceSq) / hoverRadius;
-      drawCell(context, cell, Math.max(0.08, cell.alpha + hover * 0.5), hover > 0.24 ? "green" : cell.tone);
-      if (hover > 0.48) {
-        context.fillStyle = "rgba(232, 255, 240, " + Math.min(0.32, hover * 0.34).toFixed(3) + ")";
-        context.fillRect(cell.x + 2 * ratio, cell.y + 2 * ratio, Math.max(1, 2 * ratio), Math.max(1, 2 * ratio));
+    if (pointerX > -1000) {
+      for (const cell of cells) {
+        const centerX = cell.x + cell.size / 2;
+        const centerY = cell.y + cell.size / 2;
+        const dx = centerX - pointerX;
+        const dy = centerY - pointerY;
+        const distanceSq = dx * dx + dy * dy;
+        if (distanceSq >= hoverRadiusSq) continue;
+        const hover = 1 - Math.sqrt(distanceSq) / hoverRadius;
+        drawCell(context, cell, Math.max(0.08, cell.alpha + hover * 0.5), hover > 0.24 ? "green" : cell.tone);
+        if (hover > 0.48) {
+          context.fillStyle = "rgba(232, 255, 240, " + Math.min(0.32, hover * 0.34).toFixed(3) + ")";
+          context.fillRect(cell.x + 2 * ratio, cell.y + 2 * ratio, Math.max(1, 2 * ratio), Math.max(1, 2 * ratio));
+        }
       }
     }
 
