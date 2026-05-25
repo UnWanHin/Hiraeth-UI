@@ -2,7 +2,7 @@
 
 ## Status
 
-Resolved for static, route, API, and local runtime checks after switching the background to a reference-derived pixel block field. Browser screenshot verification remains unavailable in this environment.
+Resolved for static, route, API, and local runtime checks after switching the background to a reference-derived square-cell pixel field. Browser screenshot verification remains unavailable in this environment.
 
 ## Date
 
@@ -10,7 +10,7 @@ Resolved for static, route, API, and local runtime checks after switching the ba
 
 ## Impact
 
-The portal visual layer is being redesigned toward a denser pixel-router console style: black canvas, reference-derived pixel-block background, pixel typography, stronger route cards, and visible pointer trail effects.
+The portal visual layer is being redesigned toward a denser pixel-router console style: black canvas, reference-derived square-cell pixel background, pixel typography, stronger route cards, and visible pointer trail effects.
 
 ## Evidence
 
@@ -36,10 +36,10 @@ This is planned visual work, not a production incident. After first deployment, 
 - CSS brace/comment balance check passed.
 - `start.sh restart` recreated the local portal container and passed `/api/config` health check.
 - `/`, `/services`, `/monitor`, `/ports`, and `/ops` each returned HTTP 200 and the expected `body data-route` value.
-- Served HTML includes the new `styles.css?v=20260524-1935` and `app.js?v=20260524-1935` assets.
-- Served CSS includes the redesign marker, reference-derived pixel-block background rules, and pixel-font smoothing rules.
-- Served CSS includes the reference-derived pixel block field and the stronger `#mesh` opacity.
-- Served JS includes the denser gray square canvas renderer, horizontal data lanes, and sparse accent blocks.
+- Served HTML includes the new `styles.css?v=20260525-0504` and `app.js?v=20260525-0504` assets.
+- Served CSS includes the redesign marker, reference-derived square-cell background rules, and pixel-font smoothing rules.
+- Served CSS includes the reference-derived square-cell pixel field, inline SVG cell texture, and the stronger `#mesh` opacity.
+- Served JS includes the denser gray square canvas renderer, square-cell clusters and sparse accent blocks.
 - Served JS includes the mesh and pointer trail code.
 - `GET /api/status` returned 6/6 online services.
 - Open Graph metadata still includes title, description, image, URL, type, site name, image dimensions, and image alt text.
@@ -52,3 +52,7 @@ Chrome/Chromium and Playwright were not available, so screenshot and console ver
 - In a browser-capable environment, capture desktop and mobile screenshots of `/`, `/services`, `/monitor`, `/ports`, and `/ops`.
 - Inspect browser console for frontend errors after route navigation and launcher open/close.
 - If visual overflow is observed, adjust only the final redesign layer instead of editing older historical CSS passes.
+
+## 2026-05-25 square-cell correction
+
+User feedback: the previous reference-derived layer still read as lines rather than small square cells. The CSS line-gradient texture and canvas data lanes were replaced with a square-cell SVG texture plus canvas-rendered cell clusters. Verified with static checks, served asset checks, route checks for `/`, `/services`, `/monitor`, `/ports`, and `/ops`, and `/api/status` returning 6/6 online services.

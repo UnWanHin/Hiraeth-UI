@@ -2582,16 +2582,14 @@ h3 {
   }
 }
 
-/* reference-derived pixel block field */
+/* reference-derived square-cell pixel field */
 body::before {
   z-index: 0;
   opacity: 1;
   background:
-    linear-gradient(90deg, transparent 0 9px, rgba(48, 48, 48, 0.58) 9px 13px, transparent 13px 100%) 0 0 / 38px 26px,
-    linear-gradient(0deg, transparent 0 15px, rgba(64, 64, 64, 0.38) 15px 19px, transparent 19px 100%) 9px 7px / 52px 34px,
-    linear-gradient(90deg, transparent 0 25px, rgba(96, 96, 96, 0.22) 25px 33px, transparent 33px 100%) 19px 23px / 112px 52px,
-    linear-gradient(0deg, transparent 0 18px, rgba(28, 84, 44, 0.2) 18px 23px, transparent 23px 100%) 0 100% / 42px 64px,
-    radial-gradient(circle at 50% 110%, rgba(47, 255, 142, 0.16), transparent 34rem),
+    radial-gradient(circle at 50% 112%, rgba(47, 255, 142, 0.14), transparent 34rem),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22160%22%20height%3D%22160%22%20viewBox%3D%220%200%20160%20160%22%3E%3Crect%20x%3D%2212%22%20y%3D%22108%22%20width%3D%225%22%20height%3D%225%22%20fill%3D%22%232fff8e%22%20fill-opacity%3D%22.32%22%2F%3E%3Crect%20x%3D%2236%22%20y%3D%22122%22%20width%3D%224%22%20height%3D%224%22%20fill%3D%22%232fff8e%22%20fill-opacity%3D%22.26%22%2F%3E%3Crect%20x%3D%2264%22%20y%3D%2296%22%20width%3D%226%22%20height%3D%226%22%20fill%3D%22%2354d9ff%22%20fill-opacity%3D%22.18%22%2F%3E%3Crect%20x%3D%2292%22%20y%3D%22134%22%20width%3D%225%22%20height%3D%225%22%20fill%3D%22%232fff8e%22%20fill-opacity%3D%22.28%22%2F%3E%3Crect%20x%3D%22128%22%20y%3D%22116%22%20width%3D%224%22%20height%3D%224%22%20fill%3D%22%232fff8e%22%20fill-opacity%3D%22.2%22%2F%3E%3C%2Fsvg%3E") 0 100% / 160px 160px repeat,
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2296%22%20height%3D%2296%22%20viewBox%3D%220%200%2096%2096%22%3E%3Crect%20x%3D%222%22%20y%3D%223%22%20width%3D%225%22%20height%3D%225%22%20fill%3D%22%23303030%22%20fill-opacity%3D%22.58%22%2F%3E%3Crect%20x%3D%2222%22%20y%3D%224%22%20width%3D%224%22%20height%3D%224%22%20fill%3D%22%23404040%22%20fill-opacity%3D%22.46%22%2F%3E%3Crect%20x%3D%2255%22%20y%3D%228%22%20width%3D%226%22%20height%3D%226%22%20fill%3D%22%23565656%22%20fill-opacity%3D%22.34%22%2F%3E%3Crect%20x%3D%2278%22%20y%3D%2214%22%20width%3D%223%22%20height%3D%223%22%20fill%3D%22%236a6a6a%22%20fill-opacity%3D%22.28%22%2F%3E%3Crect%20x%3D%2212%22%20y%3D%2229%22%20width%3D%226%22%20height%3D%226%22%20fill%3D%22%23383838%22%20fill-opacity%3D%22.5%22%2F%3E%3Crect%20x%3D%2238%22%20y%3D%2231%22%20width%3D%224%22%20height%3D%224%22%20fill%3D%22%23505050%22%20fill-opacity%3D%22.42%22%2F%3E%3Crect%20x%3D%2270%22%20y%3D%2234%22%20width%3D%225%22%20height%3D%225%22%20fill%3D%22%233a3a3a%22%20fill-opacity%3D%22.52%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%2258%22%20width%3D%224%22%20height%3D%224%22%20fill%3D%22%23666666%22%20fill-opacity%3D%22.26%22%2F%3E%3Crect%20x%3D%2230%22%20y%3D%2262%22%20width%3D%225%22%20height%3D%225%22%20fill%3D%22%23444444%22%20fill-opacity%3D%22.44%22%2F%3E%3Crect%20x%3D%2252%22%20y%3D%2256%22%20width%3D%223%22%20height%3D%223%22%20fill%3D%22%23747474%22%20fill-opacity%3D%22.24%22%2F%3E%3Crect%20x%3D%2283%22%20y%3D%2268%22%20width%3D%226%22%20height%3D%226%22%20fill%3D%22%23353535%22%20fill-opacity%3D%22.5%22%2F%3E%3Crect%20x%3D%2218%22%20y%3D%2284%22%20width%3D%223%22%20height%3D%223%22%20fill%3D%22%235e5e5e%22%20fill-opacity%3D%22.34%22%2F%3E%3Crect%20x%3D%2245%22%20y%3D%2282%22%20width%3D%226%22%20height%3D%226%22%20fill%3D%22%234c4c4c%22%20fill-opacity%3D%22.36%22%2F%3E%3Crect%20x%3D%2266%22%20y%3D%2286%22%20width%3D%224%22%20height%3D%224%22%20fill%3D%22%23303030%22%20fill-opacity%3D%22.5%22%2F%3E%3C%2Fsvg%3E") 0 0 / 96px 96px repeat,
     #080808;
 }
 
@@ -2599,14 +2597,14 @@ body::after {
   z-index: 1;
   opacity: 1;
   background:
-    radial-gradient(circle at var(--pointer-x, 50vw) var(--pointer-y, 50vh), rgba(47, 255, 142, 0.14), transparent 19rem),
-    repeating-linear-gradient(0deg, transparent 0 5px, rgba(47, 255, 142, 0.035) 5px 6px, transparent 6px 10px);
+    radial-gradient(circle at var(--pointer-x, 50vw) var(--pointer-y, 50vh), rgba(47, 255, 142, 0.13), transparent 18rem),
+    radial-gradient(circle at 50% 112%, rgba(84, 217, 255, 0.06), transparent 28rem);
   mix-blend-mode: screen;
 }
 
 #mesh {
   z-index: 2;
-  opacity: 0.86;
+  opacity: 0.9;
 }
 
 #pixel-trail {
