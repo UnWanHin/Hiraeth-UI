@@ -2138,15 +2138,67 @@ function startMesh() {
   const activeCells = [];
   const staticCanvas = document.createElement("canvas");
   const staticContext = staticCanvas.getContext("2d");
+  const seedKey = "hiraeth.mesh.seed.v3";
+  const epochKey = "hiraeth.mesh.epoch.v3";
   let width = 0;
   let height = 0;
   let ratio = 1;
   let raf = 0;
   let lastPaint = 0;
-  let startTime = 0;
   let seed = 8790;
+  let baseSeed = resolveMeshSeed();
+  let flowEpoch = resolveFlowEpoch();
   let pointerX = -9999;
   let pointerY = -9999;
+
+  function navigationType() {
+    const entries = performance.getEntriesByType ? performance.getEntriesByType("navigation") : [];
+    return entries && entries[0] ? entries[0].type : "navigate";
+  }
+
+  function freshSeed() {
+    try {
+      const array = new Uint32Array(1);
+      window.crypto.getRandomValues(array);
+      return array[0] || Math.floor(Math.random() * 4294967295) || 8790;
+    } catch {
+      return Math.floor(Math.random() * 4294967295) || 8790;
+    }
+  }
+
+  function resolveMeshSeed() {
+    const shouldReroll = navigationType() === "reload";
+    try {
+      const stored = Number(window.sessionStorage.getItem(seedKey));
+      if (!shouldReroll && Number.isFinite(stored) && stored > 0) return stored >>> 0;
+      const nextSeed = freshSeed() >>> 0;
+      window.sessionStorage.setItem(seedKey, String(nextSeed));
+      return nextSeed;
+    } catch {
+      return freshSeed() >>> 0;
+    }
+  }
+
+  function resolveFlowEpoch() {
+    const shouldReset = navigationType() === "reload";
+    try {
+      const stored = Number(window.sessionStorage.getItem(epochKey));
+      if (!shouldReset && Number.isFinite(stored) && stored > 0) return stored;
+      const nextEpoch = Date.now();
+      window.sessionStorage.setItem(epochKey, String(nextEpoch));
+      return nextEpoch;
+    } catch {
+      return Date.now();
+    }
+  }
+
+  function mixSeed(a, b, c) {
+    let value = (a ^ Math.imul(b >>> 0, 2654435761) ^ Math.imul(c >>> 0, 1597334677)) >>> 0;
+    value ^= value >>> 16;
+    value = Math.imul(value, 2246822507) >>> 0;
+    value ^= value >>> 13;
+    return value >>> 0;
+  }
 
   function random() {
     seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -2154,12 +2206,13 @@ function startMesh() {
   }
 
   function setPixelFill(target, tone, alpha) {
-    if (tone === "green") target.fillStyle = "rgba(47, 255, 142, " + Math.min(0.72, alpha + 0.08).toFixed(3) + ")";
-    else if (tone === "blue") target.fillStyle = "rgba(84, 217, 255, " + Math.min(0.5, alpha + 0.04).toFixed(3) + ")";
-    else target.fillStyle = "rgba(142, 142, 142, " + alpha.toFixed(3) + ")";
+    if (tone === "green") target.fillStyle = "rgba(47, 255, 142, " + Math.min(0.66, alpha + 0.06).toFixed(3) + ")";
+    else if (tone === "blue") target.fillStyle = "rgba(84, 217, 255, " + Math.min(0.44, alpha + 0.04).toFixed(3) + ")";
+    else if (tone === "amber") target.fillStyle = "rgba(255, 197, 51, " + Math.min(0.38, alpha + 0.035).toFixed(3) + ")";
+    else target.fillStyle = "rgba(142, 150, 144, " + alpha.toFixed(3) + ")";
   }
 
-  function drawCell(target, cell, alpha, tone = cell.tone, x = cell.x, y = cell.y, size = cell.size) {
+  function drawCell(target, cell, alpha, tone = cell.tone, x = cell.renderX, y = cell.renderY, size = cell.size) {
     setPixelFill(target, tone, alpha);
     target.fillRect(Math.floor(x), Math.floor(y), Math.max(1, Math.floor(size)), Math.max(1, Math.floor(size)));
   }
@@ -2168,9 +2221,8 @@ function startMesh() {
     return Math.min(max, Math.max(min, value));
   }
 
-  function bounceWave(value) {
-    const wrapped = ((value % 1) + 1) % 1;
-    return wrapped < 0.5 ? wrapped * 4 - 1 : 3 - wrapped * 4;
+  function normalizeWave(value) {
+    return clamp(value, -1, 1);
   }
 
   function resize() {
@@ -2185,13 +2237,20 @@ function startMesh() {
     if (staticContext) staticContext.imageSmoothingEnabled = false;
     cells.length = 0;
     activeCells.length = 0;
-    seed = 8790;
+    seed = mixSeed(baseSeed, width, height);
 
-    const unit = 9 * ratio;
-    const gap = Math.max(1.2 * ratio, 1);
+    const unit = 10.5 * ratio;
+    const gap = Math.max(1.15 * ratio, 1);
     const cols = Math.ceil(width / unit) + 2;
     const rows = Math.ceil(height / unit) + 2;
     const occupied = new Uint8Array(cols * rows);
+    const slotCount = cols * rows;
+    const colorBudget = {
+      green: Math.max(5, Math.floor(slotCount * 0.018)),
+      blue: Math.max(2, Math.floor(slotCount * 0.005)),
+      amber: Math.max(1, Math.floor(slotCount * 0.003)),
+    };
+    const colorCount = { green: 0, blue: 0, amber: 0 };
 
     function isFree(col, row, span) {
       if (col + span > cols || row + span > rows) return false;
@@ -2211,9 +2270,26 @@ function startMesh() {
 
     function chooseSpan(col, row) {
       const roll = random();
-      const candidates = roll < 0.025 ? [3, 2, 1] : roll < 0.42 ? [2, 1] : random() < 0.16 ? [2, 1] : [1];
+      const candidates = roll < 0.018 ? [3, 2, 1] : roll < 0.44 ? [2, 1] : random() < 0.12 ? [2, 1] : [1];
       for (const span of candidates) if (isFree(col, row, span)) return span;
       return 1;
+    }
+
+    function chooseTone() {
+      const roll = random();
+      if (roll < 0.018 && colorCount.green < colorBudget.green) {
+        colorCount.green += 1;
+        return "green";
+      }
+      if (roll >= 0.018 && roll < 0.024 && colorCount.blue < colorBudget.blue) {
+        colorCount.blue += 1;
+        return "blue";
+      }
+      if (roll >= 0.024 && roll < 0.028 && colorCount.amber < colorBudget.amber) {
+        colorCount.amber += 1;
+        return "amber";
+      }
+      return "gray";
     }
 
     for (let row = 0; row < rows; row += 1) {
@@ -2223,49 +2299,54 @@ function startMesh() {
         occupy(col, row, span);
         const slotX = col * unit;
         const slotY = row * unit;
-        const xRatio = slotX / Math.max(1, width);
-        const yRatio = slotY / Math.max(1, height);
-        const toneRoll = random();
-        const greenBias = yRatio > 0.72 ? 0.05 : yRatio > 0.44 && xRatio > 0.14 && xRatio < 0.86 ? 0.022 : 0.004;
-        const tone = toneRoll < greenBias ? "green" : toneRoll < greenBias + 0.007 ? "blue" : "gray";
         const slotSize = span * unit;
-        const guard = Math.max(1.15 * ratio, gap * (0.72 + random() * 0.32));
-        const motionRoom = Math.min(2.4 * ratio, Math.max(1.45 * ratio, slotSize * (0.11 + random() * 0.035)));
+        const tone = chooseTone();
+        const guard = Math.max(1.05 * ratio, gap * (0.72 + random() * 0.34));
+        const motionRoom = Math.min(2.7 * ratio, Math.max(1.35 * ratio, slotSize * (0.12 + random() * 0.045)));
         const size = Math.max(4 * ratio, Math.floor(slotSize - guard * 2 - motionRoom));
         const minX = slotX + guard;
         const minY = slotY + guard;
         const maxX = Math.max(minX, slotX + slotSize - guard - size);
         const maxY = Math.max(minY, slotY + slotSize - guard - size);
-        const baseX = minX + (maxX - minX) * 0.5;
-        const baseY = minY + (maxY - minY) * 0.5;
+        const midX = minX + (maxX - minX) * (0.42 + random() * 0.16);
+        const midY = minY + (maxY - minY) * (0.42 + random() * 0.16);
+        const travelX = (maxX - minX) * (0.45 + random() * 0.28);
+        const travelY = (maxY - minY) * (0.38 + random() * 0.28);
+        const stream = Math.sin(row * 0.43 + col * 0.17 + random() * 2.4);
         const cell = {
-          x: baseX,
-          y: baseY,
-          renderX: baseX,
-          renderY: baseY,
+          col,
+          row,
+          midX,
+          midY,
+          renderX: midX,
+          renderY: midY,
           minX,
           maxX,
           minY,
           maxY,
-          travelX: (maxX - minX) * 0.5,
-          travelY: (maxY - minY) * 0.5,
+          travelX,
+          travelY,
           size,
-          alpha: tone === "gray" ? 0.085 + random() * 0.2 : 0.18 + random() * 0.3,
-          phase: random() * Math.PI * 2,
-          speed: 0.035 + random() * 0.028,
-          flow: 0.84 + random() * 0.38,
-          lane: random() * Math.PI * 2,
+          alpha: tone === "gray" ? 0.07 + random() * 0.18 : 0.16 + random() * 0.28,
+          phaseA: random() * Math.PI * 2,
+          phaseB: random() * Math.PI * 2,
+          speed: 0.22 + random() * 0.18,
+          stream,
           tone,
-          active: true,
+          flow: 0.82 + random() * 0.36,
         };
         cells.push(cell);
-        if (cell.active) activeCells.push(cell);
+        activeCells.push(cell);
       }
     }
 
     if (staticContext) {
       staticContext.clearRect(0, 0, width, height);
-      for (const cell of cells) drawCell(staticContext, cell, cell.alpha * 0.06);
+      for (const cell of cells) {
+        cell.renderX = cell.midX;
+        cell.renderY = cell.midY;
+        drawCell(staticContext, cell, cell.alpha * 0.055, cell.tone, cell.midX, cell.midY);
+      }
     }
   }
 
@@ -2282,33 +2363,35 @@ function startMesh() {
   }
 
   function draw(timestamp = 0) {
-    if (!reduceMotion && timestamp && timestamp - lastPaint < 24) {
+    if (!reduceMotion && timestamp && timestamp - lastPaint < 22) {
       raf = requestAnimationFrame(draw);
       return;
     }
     if (timestamp) lastPaint = timestamp;
-    const now = timestamp || performance.now();
-    if (!startTime) startTime = now;
-    const time = reduceMotion ? 0 : (now - startTime) / 1000;
+    const time = reduceMotion ? 0 : (Date.now() - flowEpoch) / 1000;
     context.clearRect(0, 0, width, height);
     if (staticCanvas.width) {
-      context.globalAlpha = reduceMotion ? 1 : 0.18 + Math.sin(time * 0.24) * 0.025;
+      context.globalAlpha = reduceMotion ? 1 : 0.12 + Math.sin(time * 0.18) * 0.018;
       context.drawImage(staticCanvas, 0, 0);
       context.globalAlpha = 1;
     }
-    const hoverRadius = 92 * ratio;
+
+    const hoverRadius = 96 * ratio;
     const hoverRadiusSq = hoverRadius * hoverRadius;
+    const riverPhase = time * 0.24;
 
     for (const cell of activeCells) {
-      const bounceX = reduceMotion ? 0 : bounceWave(time * cell.speed + cell.phase);
-      const bounceY = reduceMotion ? 0 : bounceWave(time * (cell.speed * 0.82) + cell.lane);
-      const x = clamp(cell.x + bounceX * cell.travelX, cell.minX, cell.maxX);
-      const y = clamp(cell.y + bounceY * cell.travelY, cell.minY, cell.maxY);
-      const flowBand = Math.sin(time * 0.78 + cell.lane + cell.x * 0.006 + cell.y * 0.011);
-      const pulse = 0.8 + flowBand * 0.17 + Math.sin(time * 0.46 + cell.phase) * 0.08;
+      const streamA = Math.sin(time * cell.speed + cell.phaseA + cell.row * 0.34 + cell.col * 0.09 + riverPhase);
+      const streamB = Math.cos(time * (cell.speed * 0.72) + cell.phaseB - cell.row * 0.12 + cell.col * 0.21);
+      const eddy = Math.sin(time * 0.16 + cell.stream * 2.8 + (cell.col + cell.row) * 0.075);
+      const driftX = normalizeWave(streamA * 0.58 + streamB * 0.27 + eddy * 0.15);
+      const driftY = normalizeWave(streamB * 0.5 + Math.sin(time * 0.19 + cell.phaseA + cell.row * 0.18) * 0.32 + eddy * 0.18);
+      const x = clamp(cell.midX + driftX * cell.travelX, cell.minX, cell.maxX);
+      const y = clamp(cell.midY + driftY * cell.travelY, cell.minY, cell.maxY);
+      const pulse = 0.78 + Math.sin(time * 0.36 + cell.phaseB + cell.stream) * 0.09 + Math.sin(time * 0.11 + cell.row * 0.07) * 0.1;
       cell.renderX = x;
       cell.renderY = y;
-      drawCell(context, cell, Math.max(0.045, cell.alpha * pulse * cell.flow), cell.tone, x, y);
+      drawCell(context, cell, Math.max(0.038, cell.alpha * pulse * cell.flow), cell.tone, x, y);
     }
 
     if (pointerX > -1000) {
@@ -2320,9 +2403,9 @@ function startMesh() {
         const distanceSq = dx * dx + dy * dy;
         if (distanceSq >= hoverRadiusSq) continue;
         const hover = 1 - Math.sqrt(distanceSq) / hoverRadius;
-        drawCell(context, cell, Math.max(0.08, cell.alpha + hover * 0.5), hover > 0.24 ? "green" : cell.tone);
-        if (hover > 0.48) {
-          context.fillStyle = "rgba(232, 255, 240, " + Math.min(0.32, hover * 0.34).toFixed(3) + ")";
+        drawCell(context, cell, Math.max(0.08, cell.alpha + hover * 0.46), hover > 0.26 ? "green" : cell.tone, cell.renderX, cell.renderY);
+        if (hover > 0.5) {
+          context.fillStyle = "rgba(232, 255, 240, " + Math.min(0.28, hover * 0.3).toFixed(3) + ")";
           context.fillRect(cell.renderX + 2 * ratio, cell.renderY + 2 * ratio, Math.max(1, 2 * ratio), Math.max(1, 2 * ratio));
         }
       }
