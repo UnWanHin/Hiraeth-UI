@@ -1926,12 +1926,7 @@ function startPixelTrail() {
     lastY = y;
   }
 
-  function draw(timestamp = 0) {
-    if (!reduceMotion && timestamp - lastPaint < 42) {
-      raf = requestAnimationFrame(draw);
-      return;
-    }
-    lastPaint = timestamp;
+  function draw() {
     context.clearRect(0, 0, width, height);
     for (let index = particles.length - 1; index >= 0; index -= 1) {
       const particle = particles[index];
@@ -2097,7 +2092,12 @@ function startMesh() {
     if (reduceMotion) draw();
   }
 
-  function draw() {
+  function draw(timestamp = 0) {
+    if (!reduceMotion && timestamp && timestamp - lastPaint < 42) {
+      raf = requestAnimationFrame(draw);
+      return;
+    }
+    if (timestamp) lastPaint = timestamp;
     context.clearRect(0, 0, width, height);
     frame += reduceMotion ? 0 : 1;
     if (staticCanvas.width) {

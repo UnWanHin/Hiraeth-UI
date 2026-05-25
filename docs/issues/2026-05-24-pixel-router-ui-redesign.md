@@ -36,7 +36,7 @@ This is planned visual work, not a production incident. After first deployment, 
 - CSS brace/comment balance check passed.
 - `start.sh restart` recreated the local portal container and passed `/api/config` health check.
 - `/`, `/services`, `/monitor`, `/ports`, and `/ops` each returned HTTP 200 and the expected `body data-route` value.
-- Served HTML includes the new `styles.css?v=20260525-0638` and `app.js?v=20260525-0638` assets.
+- Served HTML includes the new `styles.css?v=20260525-0648` and `app.js?v=20260525-0648` assets.
 - Served CSS includes the redesign marker, dynamic square-cell matrix layer, and pixel-font smoothing rules.
 - Served CSS includes the dynamic square-cell matrix marker and the stronger `#mesh` opacity.
 - Served JS includes the irregular square-cell field, pointer-proximity brightening, varied cell sizing, random clusters, and a less grid-locked cursor trail.
@@ -72,3 +72,7 @@ User feedback: the cells should be tightly packed, different sizes, and non-over
 ## 2026-05-25 slow packed mosaic flow
 
 User feedback: the packed variable-cell mosaic is the right form, but the background should slowly flow and change while keeping the same overall structure. The packed base remains fixed and non-overlapping, while a larger active overlay now uses slow coherent phase drift, subtle brightness breathing, and tiny sub-gap offsets. Verified with syntax checks, CSS structure checks, served asset checks, route checks for `/`, `/services`, `/monitor`, `/ports`, and `/ops`, and `/api/status` returning 6/6 online services.
+
+## 2026-05-25 cursor trail regression
+
+User feedback: after adding slow packed mosaic flow, the cursor trail disappeared. Root cause: the frame throttle was accidentally applied to the cursor trail draw loop, where `lastPaint` was not declared, causing the trail animation frame to fail. The throttle was moved to the background mesh draw loop and the cursor trail loop was restored. Verified with syntax checks, served asset checks, route checks for `/`, `/services`, `/monitor`, `/ports`, and `/ops`, a served JS check confirming `lastPaint` is no longer inside `startPixelTrail()`, and `/api/status` returning 6/6 online services.
